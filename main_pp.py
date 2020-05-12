@@ -65,7 +65,7 @@ def main():
     actor_critic = []
     if args.share_policy:
         if args.use_attention:
-            share_base = ATTBase(envs.observation_space[0].shape[0], adv_num=args.adv_num, good_num=args.good_num, landmark_num=args.landmark_num)
+            share_base = ATTBase(envs.observation_space[0].shape[0], hidden_size=100)
             share_dist = Categorical(share_base.output_size, envs.action_space[0].n)
             for i in range(args.adv_num):
                 ac = Policy(
@@ -75,7 +75,10 @@ def main():
                     agent_i=i,
                     base=share_base,
                     dist=share_dist,
-                    base_kwargs={'recurrent': args.recurrent_policy})
+                    base_kwargs={'recurrent': args.recurrent_policy},
+                    adv_num=args.adv_num, 
+                    good_num=args.good_num,
+                    landmark_num=args.landmark_num)
                 ac.to(device)
                 actor_critic.append(ac)
         else:

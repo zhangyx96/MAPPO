@@ -11,6 +11,7 @@ class Scenario(BaseScenario):
         num_adversaries = 6
         num_good_agents = 4
         num_landmarks = 1
+        self.num_adversaries = num_adversaries
         num_agents = num_adversaries + num_good_agents # deactivate "good" agent
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
@@ -160,7 +161,7 @@ class Scenario(BaseScenario):
             for ag in agents:
                 for adv in adversaries:
                     if self.is_collision(ag, adv):
-                        rew += 10
+                        rew += 10/self.num_adversaries
         return rew
     
     def reset_good(self,world):
