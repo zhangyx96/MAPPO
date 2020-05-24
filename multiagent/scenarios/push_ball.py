@@ -85,8 +85,13 @@ class Scenario(BaseScenario):
                 ball.state.p_pos = np.random.uniform(-self.sample_radius, self.sample_radius, world.dim_p) + landmark.state.p_pos
                 ball.state.p_vel = np.zeros(world.dim_p)
                 ball.state.c = np.zeros(world.dim_c)
+                print(self.sample_radius)
+                print('landmark_pos',landmark.state.p_pos)
+                print('ball_pos',ball.state.p_pos)
+                print('distance',np.sqrt(np.sum(np.square(landmark.state.p_pos - ball.state.p_pos))))
         for agent in agents:
-            agent.state.p_pos = np.random.uniform(-self.sample_radius, self.sample_radius, world.dim_p) + balls[0].state.p_pos
+            #agent.state.p_pos = np.random.uniform(-self.sample_radius, self.sample_radius, world.dim_p) + balls[0].state.p_pos
+            agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
             agent.state.p_vel = np.zeros(world.dim_p)
             agent.state.c = np.zeros(world.dim_c)
 
@@ -142,12 +147,12 @@ class Scenario(BaseScenario):
         rew = 0
         for l in world.landmarks:
             dists = [np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos))) for a in world.agents if a.adversary == False]
-            if min(dists) < world.landmarks[0].size:
-                rew += 10/self.num_good_agents
+            if min(dists) < world.landmarks[0].size + agent.size:
+                rew += 1/self.num_good_agents
         return rew
     
     def reset_radius(self,sample_radius):
-        sample_radius = max(sample_radius,1.5)
+        sample_radius = min(sample_radius,1.5)
         self.sample_radius = sample_radius
 
     def observation(self, agent, world):

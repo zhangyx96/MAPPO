@@ -178,7 +178,7 @@ def main():
     num_updates = int(
         args.num_env_steps) // args.num_steps // args.num_processes
     
-    sample_radius = 0.2
+    sample_radius = 0.1
     radius_delta = 0.2
     radius_updates_iter = 200
 
@@ -225,8 +225,8 @@ def main():
             #start = time.time()
             #pdb.set_trace()  
             obs, reward, done, infos = envs.step(action)
-            #envs.reset_good()
-            
+            #print(step,reward)
+
             #print(reward.max())
             #if(reward.max()>2):
             #    import pdb; pdb.set_trace()

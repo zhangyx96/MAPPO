@@ -214,6 +214,8 @@ class DummyVecEnv(VecEnv):
     #     # import pdb; pdb.set_trace()  
     #     return np.array(results)
 
-
+    def reset_radius(self, sample_radius):
+        for env in self.envs:
+            env.reset_radius(sample_radius)
     def close(self):
         return
