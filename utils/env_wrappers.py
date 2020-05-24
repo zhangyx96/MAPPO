@@ -23,6 +23,9 @@ def worker(remote, parent_remote, env_fn_wrapper):
             index_index = cmd[4]
             ob, rou_index= env.new_starts_obs(starts,now_agent_num,index_index,sample_index)
             remote.send((ob,rou_index))
+        elif cmd[0:7] == 'reset_r':
+            sample_radius = float(cmd[7:])
+            env.reset_radius(sample_radius)
         elif cmd[0:5] == 'reset':
             ob = env.reset()
             remote.send(ob)
@@ -125,6 +128,17 @@ class SubprocVecEnv(VecEnv):
     #     observation_space, action_space = self.remotes[0].recv()
     #     VecEnv.__init__(self, self.length, observation_space, action_space)
     #     return tmp
+    def reset_radius(self, sample_radius):
+        self.reset_radius_async(sample_radius)
+        return self.reset_radius_wait()
+        
+    def reset_radius_async(self, sample_radius):
+        for remote in self.remotes:
+            remote.send(('reset_r' + str(sample_radius), None))
+        self.waiting = True
+
+    def reset_radius_wait(self):
+        self.waiting = False
 
     def reset(self):
         for remote in self.remotes:

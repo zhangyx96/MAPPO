@@ -52,7 +52,6 @@ if __name__ == '__main__':
     masks = torch.zeros(1, 1)
     
     cover_rate_sum = 0
-    reward_sum = 0
     for ep_i in range(n_episodes):
         print("Episode %i of %i" % (ep_i + 1, n_episodes))
         mean_reward = 0
@@ -73,17 +72,10 @@ if __name__ == '__main__':
             al_agent = []
             al_landmark = []
             share_obs = state.view(1,-1)
-            # for i in range(nagents):
-            #     share_obs.append(state[i].view(-1,num_state))
-            # share_obs = np.array(share_obs).from_numpy()
-            # start = time.time()
             for i in range(args.adv_num):
                 obs = state[i].view(-1, num_state)
-                # value, action, _, recurrent_hidden_states, alpha_agent, alpha_landmark = agents[i].act(share_obs, obs, nagents, i, recurrent_hidden_states, masks)
                 value, action, _, recurrent_hidden_states = agents[i].act(share_obs, obs, args.adv_num, i, recurrent_hidden_states, masks)
                 actions.append(action)
-                # al_agent.append(alpha_agent)
-                # al_landmark.append(alpha_landmark)
             torch_actions = actions
 
             # convert actions to numpy arrays
@@ -97,7 +89,7 @@ if __name__ == '__main__':
                 ac[a] = 1
                 actions.append(ac)
             obs, rewards, dones, infos = env.step(actions)
-            mean_reward += rewards[0]/10
+            print(rewards[0])
             masks.fill_(0.0 if dones else 1.0)
             if save_gifs:
                 frames.append(env.render('rgb_array')[0])
@@ -105,15 +97,10 @@ if __name__ == '__main__':
             elapsed = calc_end - calc_start
             if elapsed < ifi:
                 time.sleep(ifi - elapsed)
-
-        reward_sum += mean_reward
-        print('num_catched',mean_reward)
         if save_gifs:
             gif_num = 0
             while os.path.exists('./gifs/' + model_dir + '/%i_%i.gif' % (gif_num, ep_i)):
                 gif_num += 1
             imageio.mimsave('./gifs/' + model_dir + '/%i_%i.gif' % (gif_num, ep_i),
                             frames, duration=ifi)
-    num_catched = reward_sum/n_episodes
-    print('mean_num_catched',num_catched)
 

@@ -13,7 +13,7 @@ class MultiAgentEnv(gym.Env):
 
     def __init__(self, world, reset_callback=None, reward_callback=None,
                  observation_callback=None, full_obs_callback=None, info_callback=None,
-                 done_callback=None, shared_viewer=True, reset_good_callback = None):
+                 done_callback=None, shared_viewer=True, reset_radius_callback = None):
 
         self.world = world
         self.agents = self.world.policy_agents
@@ -26,7 +26,7 @@ class MultiAgentEnv(gym.Env):
         self.info_callback = info_callback
         self.done_callback = done_callback
 
-        self.reset_good_callback = reset_good_callback
+        self.reset_radius_callback = reset_radius_callback
 
         # environment parameters
         self.discrete_action_space = True # OVERWRITE
@@ -127,6 +127,9 @@ class MultiAgentEnv(gym.Env):
         for agent in self.agents:
             obs_n.append(self._get_obs(agent))
         return obs_n
+
+    def reset_radius(self,sample_radius):
+        self.reset_radius_callback(sample_radius)
     
     # get info used for benchmarking
     def _get_info(self, agent):

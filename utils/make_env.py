@@ -29,7 +29,7 @@ def make_env(scenario_name, benchmark=False, discrete_action=False):
         .action_space       :   Returns the action space for each agent
         .n                  :   Returns the number of Agents
     '''
-    from multiagent.environment_new import MultiAgentEnv
+    from multiagent.environment_pb import MultiAgentEnv
     import multiagent.scenarios as scenarios
 
     # load scenario from script
@@ -43,5 +43,5 @@ def make_env(scenario_name, benchmark=False, discrete_action=False):
                             discrete_action=discrete_action)
     else:
         env = MultiAgentEnv(world, scenario.reset_world, scenario.reward,
-                            scenario.observation, reset_good_callback = scenario.reset_good)
+                            scenario.observation, reset_radius_callback = scenario.reset_radius)
     return env

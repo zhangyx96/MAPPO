@@ -93,12 +93,12 @@ class Policy(nn.Module):
 
 
     def get_value(self, share_inputs, inputs, agent_num, rnn_hxs, masks):
-        value, _, _ = self.base(share_inputs, inputs, agent_num, self.agent_i, rnn_hxs, masks,
+        value, _, _ = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks,agent_num=self.adv_num,
                                 adv_num=self.adv_num, good_num=self.good_num, landmark_num=self.landmark_num)
         return value
 
     def evaluate_actions(self, share_inputs, inputs, agent_num, rnn_hxs, masks, action):
-        value, actor_features, rnn_hxs = self.base(share_inputs, inputs, agent_num, self.agent_i, rnn_hxs, masks,
+        value, actor_features, rnn_hxs = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks,agent_num=self.adv_num,
                                                 adv_num=self.adv_num, good_num=self.good_num, landmark_num=self.landmark_num)
         dist = self.dist(actor_features)
 
