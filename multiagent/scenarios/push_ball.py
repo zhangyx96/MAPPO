@@ -9,11 +9,12 @@ class Scenario(BaseScenario):
         # set any world properties first
         world.dim_c = 2
         num_adversaries = 2
-        num_good_agents = 1
-        num_landmarks = 1
+        num_good_agents = 2
+        num_landmarks = 2
         self.num_adversaries = num_adversaries
         self.num_good_agents = num_good_agents
         self.sample_radius = 0.3
+        self.target_bound = 0.3
         num_agents = num_adversaries + num_good_agents # deactivate "good" agent
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
@@ -80,18 +81,18 @@ class Scenario(BaseScenario):
         
         for ball,landmark in zip(balls, world.landmarks):
             if not landmark.boundary:
-                landmark.state.p_pos = np.random.uniform(-0.9, +0.9, world.dim_p)
+                landmark.state.p_pos = np.random.uniform(-self.target_bound, +self.target_bound, world.dim_p)
                 landmark.state.p_vel = np.zeros(world.dim_p)
                 ball.state.p_pos = np.random.uniform(-self.sample_radius, self.sample_radius, world.dim_p) + landmark.state.p_pos
                 ball.state.p_vel = np.zeros(world.dim_p)
                 ball.state.c = np.zeros(world.dim_c)
-                print(self.sample_radius)
-                print('landmark_pos',landmark.state.p_pos)
-                print('ball_pos',ball.state.p_pos)
-                print('distance',np.sqrt(np.sum(np.square(landmark.state.p_pos - ball.state.p_pos))))
+                # print(self.sample_radius)
+                # print('landmark_pos',landmark.state.p_pos)
+                # print('ball_pos',ball.state.p_pos)
+                # print('distance',np.sqrt(np.sum(np.square(landmark.state.p_pos - ball.state.p_pos))))
         for agent in agents:
-            #agent.state.p_pos = np.random.uniform(-self.sample_radius, self.sample_radius, world.dim_p) + balls[0].state.p_pos
-            agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
+            agent.state.p_pos = np.random.uniform(-self.sample_radius, self.sample_radius, world.dim_p) + balls[0].state.p_pos
+            #agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
             agent.state.p_vel = np.zeros(world.dim_p)
             agent.state.c = np.zeros(world.dim_c)
 
@@ -152,8 +153,8 @@ class Scenario(BaseScenario):
         return rew
     
     def reset_radius(self,sample_radius):
-        sample_radius = min(sample_radius,1.5)
-        self.sample_radius = sample_radius
+        self.sample_radius = min(sample_radius,1.5)
+        self.target_bound = min(sample_radius/2,0.9)
 
     def observation(self, agent, world):
         # get positions of all entities in this agent's reference frame

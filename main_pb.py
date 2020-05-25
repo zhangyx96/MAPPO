@@ -178,9 +178,9 @@ def main():
     num_updates = int(
         args.num_env_steps) // args.num_steps // args.num_processes
     
-    sample_radius = 0.1
+    sample_radius = 0.3
     radius_delta = 0.2
-    radius_updates_iter = 200
+    radius_updates_iter = 150
 
     for j in range(num_updates):
         print("[%d/%d]"%(j,num_updates))
