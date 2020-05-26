@@ -114,7 +114,7 @@ class Scenario(BaseScenario):
         rew = 0
         for l in world.landmarks:
             dists = [np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos))) for a in world.agents if a.adversary == False]
-            if min(dists) < world.landmarks[0].size:
+            if min(dists) < world.landmarks[0].size + agent.size:
                 rew += 10/self.num_good_agents
         return rew
     
