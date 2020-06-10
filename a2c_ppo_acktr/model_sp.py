@@ -14,13 +14,9 @@ class Flatten(nn.Module):
 
 class Policy(nn.Module):
     def __init__(self, obs_shape, action_space, agent_i, 
-                agent_num=3, adv_num=6, good_num=4, landmark_num=1, 
-                base=None, dist=None, base_kwargs=None):
+                agent_num,base=None, dist=None, base_kwargs=None):
         super(Policy, self).__init__()
         self.agent_num = agent_num
-        self.adv_num = adv_num
-        self.good_num = good_num
-        self.landmark_num = landmark_num
         if base_kwargs is None:
             base_kwargs = {}
         if base is None:
@@ -71,10 +67,7 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, share_inputs, inputs, agent_num, rnn_hxs, masks, deterministic=False):
-        #print('adv_num',self.adv_num,'good_num',self.good_num,'landmark_num',self.landmark_num)
-        value, actor_features, rnn_hxs = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks, 
-                                                    adv_num=self.age, good_num=self.good_num, landmark_num=self.landmark_num)
-        #value, actor_features, rnn_hxs, alpha_agent, alpha_landmark = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks)
+        value, actor_features, rnn_hxs = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks, agent_num)
         dist = self.dist(actor_features)
         if deterministic:
             action = dist.mode()
@@ -86,20 +79,15 @@ class Policy(nn.Module):
 
         return value, action, action_log_probs, rnn_hxs
     
-    def update_num(self,adv_num, good_num, landmark_num):
-        self.adv_num = adv_num
-        self.good_num = good_num
-        self.landmark_num = landmark_num
-
+    def update_num(self,agent_num):
+        self.agent_num = agent_num
 
     def get_value(self, share_inputs, inputs, agent_num, rnn_hxs, masks):
-        value, _, _ = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks,agent_num=self.adv_num,
-                                adv_num=self.adv_num, good_num=self.good_num, landmark_num=self.landmark_num)
+        value, _, _ = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks,agent_num=self.agent_num)
         return value
 
     def evaluate_actions(self, share_inputs, inputs, agent_num, rnn_hxs, masks, action):
-        value, actor_features, rnn_hxs = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks,agent_num=self.adv_num,
-                                                adv_num=self.adv_num, good_num=self.good_num, landmark_num=self.landmark_num)
+        value, actor_features, rnn_hxs = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks,agent_num=self.agent_num)
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)   
@@ -325,19 +313,8 @@ class ObsEncoder(nn.Module):
 
         for i in range(agent_num - 1):
             other_agent_emb.append(inputs[:, 4+2*landmark_num+2*i:4+2*landmark_num+2*(i+1)])
-            #one_agent_emb = self.other_agent_encoder(inputs[:, 4+2*landmark_num+2*i:4+2*landmark_num+2*(i+1)])
-            #import pdb; pdb.set_trace()
-            #other_agent_emb.append(one_agent_emb)
-            #beta_ij = torch.matmul(self_emb.view(batch_size,1,-1), self.agent_correlation_mat)                #[batch_size, 1, hidden_size]
-            #beta_ij = torch.matmul(agent_beta_ij, one_agent_emb.view(batch_size,-1,1))       #[batch_size, 1, 1]
-            #beta_agent.append(beta_ij.squeeze(1).squeeze(1))
         for i in range(landmark_num):
             landmark_emb.append(inputs[:, 4+2*i:4+2*(i+1)])
-            #one_landmark_emb = self.landmark_encoder(inputs[:, 4+2*i:4+2*(i+1)])
-            #landmark_emb.append(one_landmark_emb)
-            #beta_ij = torch.matmul(self_emb.view(batch_size,1,-1), self.landmark_correlation_mat)                #[batch_size, 1, hidden_size]
-            #beta_ij = torch.matmul(landmark_beta_ij, one_landmark_emb.view(batch_size,-1,1))       #[batch_size, 1, 1]
-            #beta_landmark.append(beta_ij.squeeze(1).squeeze(1))
         other_agent_emb = torch.stack(other_agent_emb,dim = 1)    #(batch_size,n_agents-1,eb_dim)
         other_agent_emb = self.other_agent_encoder(other_agent_emb)
         #beta_agent = torch.stack(beta_agent,dim = 1) 
@@ -361,176 +338,6 @@ class ObsEncoder(nn.Module):
         f = self.encoder_linear(torch.cat([gi, other_agent_vi, landmark_vi], dim=1))
         return f
 
-# #simple_tag_coop        
-# class ObsEncoder_2(nn.Module):
-#     def __init__(self, hidden_size=100):
-#         super(ObsEncoder_2, self).__init__()
-        
-#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-#                                constant_(x, 0), np.sqrt(2))
-#         self.self_encoder = nn.Sequential(
-#                             init_(nn.Linear(4, hidden_size)), nn.Tanh())
-#         self.landmark_encoder = nn.Sequential(
-#                             init_(nn.Linear(2, hidden_size)), nn.Tanh())
-#         self.adv_encoder = nn.Sequential(
-#                             init_(nn.Linear(2, hidden_size)), nn.Tanh())
-#         self.good_encoder = nn.Sequential(
-#                             init_(nn.Linear(3, hidden_size)), nn.Tanh())
-
-#         self.adv_correlation_mat = nn.Parameter(torch.FloatTensor(hidden_size,hidden_size),requires_grad=True)
-#         nn.init.orthogonal_(self.adv_correlation_mat.data, gain=1)
-#         self.good_correlation_mat = nn.Parameter(torch.FloatTensor(hidden_size,hidden_size),requires_grad=True)
-#         nn.init.orthogonal_(self.good_correlation_mat.data, gain=1)
-#         self.landmark_correlation_mat = nn.Parameter(torch.FloatTensor(hidden_size,hidden_size),requires_grad=True)
-#         nn.init.orthogonal_(self.landmark_correlation_mat.data, gain=1)
-#         self.fc = nn.Sequential(
-#                     init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
-#         #self.encoder_linear = init_(nn.Linear(3*hidden_size, hidden_size))
-#         # 加上激活函数 效果会有比较大的提升 虽然还是达不到标准
-#         self.encoder_linear = nn.Sequential(
-#                             init_(nn.Linear(hidden_size * 4, hidden_size)), nn.Tanh(),
-#                             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
-
-#         # self.layer_norm_1 = nn.LayerNorm(hidden_size)
-#         # self.layer_norm_2 = nn.LayerNorm(hidden_size)
-
-#     # agent_num需要手动设置一下
-#     def forward(self, inputs, adv_num, good_num, landmark_num):
-#         batch_size = inputs.shape[0]
-#         obs_dim = inputs.shape[-1]
-#         emb_self = self.self_encoder(inputs[:, :4])
-      
-#         emb_adv = []
-#         beta_adv = []
-#         emb_good = []
-#         beta_good = []
-#         emb_landmark = []
-#         beta_landmark = []
-
-#         beta_adv_ij = torch.matmul(emb_self.view(batch_size,1,-1), self.adv_correlation_mat)
-#         beta_good_ij = torch.matmul(emb_self.view(batch_size,1,-1), self.good_correlation_mat)
-#         landmark_beta_ij = torch.matmul(emb_self.view(batch_size,1,-1), self.landmark_correlation_mat) 
-#         for i in range(adv_num-1):
-#             emb_adv.append(inputs[:, 4+2*i:4+2*(i+1)])
-#         good_offset = 4 + 2*(adv_num-1)
-#         good_alive_offset = 4 + 2*(adv_num-1) + 2*good_num + 2*landmark_num
-#         for i in range(good_num):
-#             good_input = inputs[:, good_offset+2*i:good_offset+2*(i+1)]
-#             good_input = torch.cat([good_input, inputs[:,good_alive_offset].unsqueeze(1)],dim=1)
-#             emb_good.append(good_input)
-#         landmark_offset = 4 + 2*(adv_num-1) + 2*good_num
-#         for i in range(landmark_num):
-#             emb_landmark.append(inputs[:, landmark_offset+2*i:landmark_offset+2*(i+1)])
-
-#         emb_adv = torch.stack(emb_adv,dim = 1)    #(batch_size,n_agents-1,eb_dim)
-#         emb_adv = self.adv_encoder(emb_adv)
-#         beta_adv = torch.matmul(beta_adv_ij, emb_adv.permute(0,2,1)).squeeze(1)
-
-#         emb_good = torch.stack(emb_good,dim = 1)    #(batch_size,n_agents-1,eb_dim)
-#         emb_good = self.good_encoder(emb_good)
-#         beta_good = torch.matmul(beta_good_ij, emb_adv.permute(0,2,1)).squeeze(1)
-
-#         emb_landmark = torch.stack(emb_landmark,dim = 1)    #(batch_size,n_agents-1,eb_dim)
-#         emb_landmark = self.landmark_encoder(emb_landmark)
-#         beta_landmark = torch.matmul(landmark_beta_ij, emb_landmark.permute(0,2,1)).squeeze(1)
-
-#         alpha_adv = F.softmax(beta_adv,dim = 1).unsqueeze(2)   
-#         alpha_good = F.softmax(beta_good,dim = 1).unsqueeze(2)   
-#         alpha_landmark = F.softmax(beta_landmark,dim = 1).unsqueeze(2)
-#         adv_vi = torch.mul(alpha_adv,emb_adv)
-#         adv_vi = torch.sum(adv_vi,dim=1)
-#         good_vi = torch.mul(alpha_good,emb_good)
-#         good_vi = torch.sum(good_vi,dim=1)
-#         landmark_vi = torch.mul(alpha_landmark,emb_landmark)
-#         landmark_vi = torch.sum(landmark_vi,dim=1)
-
-#         gi = self.fc(emb_self)
-
-#         f = self.encoder_linear(torch.cat([gi, adv_vi, good_vi, landmark_vi], dim=1))
-# return f
-
-#simple_tag_coop        
-class ObsEncoder_2(nn.Module):
-    def __init__(self, hidden_size=100):
-        super(ObsEncoder_2, self).__init__()
-        
-        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), np.sqrt(2))
-        self.self_encoder = nn.Sequential(
-                            init_(nn.Linear(4, hidden_size)), nn.Tanh())
-        self.landmark_encoder = nn.Sequential(
-                            init_(nn.Linear(2, hidden_size)), nn.Tanh())
-        self.adv_encoder = nn.Sequential(
-                            init_(nn.Linear(2, hidden_size)), nn.Tanh())
-        self.good_encoder = nn.Sequential(
-                            init_(nn.Linear(2, hidden_size)), nn.Tanh())
-
-        self.adv_correlation_mat = nn.Parameter(torch.FloatTensor(hidden_size,hidden_size),requires_grad=True)
-        nn.init.orthogonal_(self.adv_correlation_mat.data, gain=1)
-        self.good_correlation_mat = nn.Parameter(torch.FloatTensor(hidden_size,hidden_size),requires_grad=True)
-        nn.init.orthogonal_(self.good_correlation_mat.data, gain=1)
-        self.landmark_correlation_mat = nn.Parameter(torch.FloatTensor(hidden_size,hidden_size),requires_grad=True)
-        nn.init.orthogonal_(self.landmark_correlation_mat.data, gain=1)
-        self.fc = nn.Sequential(
-                    init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
-        #self.encoder_linear = init_(nn.Linear(3*hidden_size, hidden_size))
-        # 加上激活函数 效果会有比较大的提升 虽然还是达不到标准
-        self.encoder_linear = nn.Sequential(
-                            init_(nn.Linear(hidden_size * 4, hidden_size)), nn.Tanh(),
-                            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
-
-    # agent_num需要手动设置一下
-    def forward(self, inputs, adv_num, good_num, landmark_num):
-        batch_size = inputs.shape[0]
-        obs_dim = inputs.shape[-1]
-        emb_self = self.self_encoder(inputs[:, :4])
-      
-        emb_adv = []
-        beta_adv = []
-        emb_good = []
-        beta_good = []
-        emb_landmark = []
-        beta_landmark = []
-
-        beta_adv_ij = torch.matmul(emb_self.view(batch_size,1,-1), self.adv_correlation_mat)
-        beta_good_ij = torch.matmul(emb_self.view(batch_size,1,-1), self.good_correlation_mat)
-        beta_landmark_ij = torch.matmul(emb_self.view(batch_size,1,-1), self.landmark_correlation_mat)
-        for i in range(adv_num-1):
-            emb_adv.append(inputs[:, 4+2*i:4+2*(i+1)])
-        good_offset = 4 + 2*(adv_num-1)
-        for i in range(good_num):
-            emb_good.append(inputs[:, good_offset+2*i:good_offset+2*(i+1)])
-        landmark_offset = 4 + 2*(adv_num-1) + 2*good_num
-        for i in range(landmark_num):
-            emb_landmark.append(inputs[:, landmark_offset+2*i:landmark_offset+2*(i+1)])
-
-        emb_adv = torch.stack(emb_adv,dim = 1)    #(batch_size,n_agents-1,eb_dim)
-        emb_adv = self.adv_encoder(emb_adv)
-        beta_adv = torch.matmul(beta_adv_ij, emb_adv.permute(0,2,1)).squeeze(1)
-
-        emb_good = torch.stack(emb_good,dim = 1)    #(batch_size,n_agents-1,eb_dim)
-        emb_good = self.good_encoder(emb_good)
-        beta_good = torch.matmul(beta_good_ij, emb_good.permute(0,2,1)).squeeze(1)
-
-        emb_landmark = torch.stack(emb_landmark,dim = 1)    #(batch_size,n_agents-1,eb_dim)
-        emb_landmark = self.landmark_encoder(emb_landmark)
-        beta_landmark = torch.matmul(beta_landmark_ij, emb_landmark.permute(0,2,1)).squeeze(1)
-
-        alpha_adv = F.softmax(beta_adv,dim = 1).unsqueeze(2)   
-        alpha_good = F.softmax(beta_good,dim = 1).unsqueeze(2)   
-        alpha_landmark = F.softmax(beta_landmark,dim = 1).unsqueeze(2)
-        adv_vi = torch.mul(alpha_adv,emb_adv)
-        adv_vi = torch.sum(adv_vi,dim=1)
-        good_vi = torch.mul(alpha_good,emb_good)
-        good_vi = torch.sum(good_vi,dim=1)
-        landmark_vi = torch.mul(alpha_landmark,emb_landmark)
-        landmark_vi = torch.sum(landmark_vi,dim=1)
-
-        gi = self.fc(emb_self)
-        f = self.encoder_linear(torch.cat([gi, adv_vi, good_vi, landmark_vi], dim=1))
-        return f
-
-
 class ATTBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, assign_id=False, hidden_size=100):
         super(ATTBase, self).__init__(recurrent, num_inputs, hidden_size)
@@ -538,9 +345,9 @@ class ATTBase(NNBase):
             num_inputs = hidden_size
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), np.sqrt(2))    
-        self.actor = ObsEncoder_2(hidden_size=hidden_size)
+        self.obs_encoder_1 = ObsEncoder(hidden_size=hidden_size)
         #self.encoder = init_(nn.Linear(num_inputs, hidden_size))
-        self.encoder = ObsEncoder_2(hidden_size=hidden_size)
+        self.obs_encoder_2 = ObsEncoder(hidden_size=hidden_size)
 
         self.correlation_mat = nn.Parameter(torch.FloatTensor(hidden_size,hidden_size),requires_grad=True)
         #self.correlation_mat.data.fill_(0.25)
@@ -555,7 +362,7 @@ class ATTBase(NNBase):
                 init_(nn.Linear(hidden_size, 1)))
         self.train()
 
-    def forward(self, share_inputs, inputs, agent_i, rnn_hxs, masks, agent_num=3, adv_num=3, good_num=1, landmark_num=0):
+    def forward(self, share_inputs, inputs, agent_i, rnn_hxs, masks, agent_num):
         """
         share_inputs: [batch_size, obs_dim*agent_num]
         inputs: [batch_size, obs_dim]
@@ -563,14 +370,14 @@ class ATTBase(NNBase):
         batch_size = inputs.shape[0]
         obs_dim = inputs.shape[-1]
         #start = time.time()
-        hidden_actor = self.actor(inputs, adv_num, good_num, landmark_num)
-        f_ii = self.encoder(inputs, adv_num, good_num, landmark_num)
+        hidden_actor = self.obs_encoder_1(inputs, agent_num)
+        f_ii = self.obs_encoder_2(inputs, agent_num)
         obs_beta_ij = torch.matmul(f_ii.view(batch_size,1,-1), self.correlation_mat)
         obs_encoder = []
         beta = []
-        for i in range(adv_num):
+        for i in range(agent_num):
             if i != agent_i:
-                f_ij = self.encoder(share_inputs[:, i*obs_dim:(i+1)*obs_dim], adv_num, good_num, landmark_num)     #[batch_size, hidden_size]
+                f_ij = self.obs_encoder_2(share_inputs[:, i*obs_dim:(i+1)*obs_dim], agent_num)     #[batch_size, hidden_size]
                 obs_encoder.append(f_ij)
         obs_encoder = torch.stack(obs_encoder,dim = 1)    #(batch_size,n_agents-1,eb_dim)
         beta = torch.matmul(obs_beta_ij, obs_encoder.permute(0,2,1)).squeeze(1)

@@ -98,14 +98,24 @@ class VecEnv(ABC):
         self.close_extras()
         self.closed = True
 
-    def step(self, actions):
+    # def step(self, actions):
+    #     """
+    #     Step the environments synchronously.
+
+    #     This is available for backwards compatibility.
+    #     """
+    #     self.step_async(actions)
+    #     return self.step_wait()
+    
+    
+    def step(self, actions, now_num_processes):
         """
         Step the environments synchronously.
 
         This is available for backwards compatibility.
         """
-        self.step_async(actions)
-        return self.step_wait()
+        self.step_async(actions,now_num_processes)
+        return self.step_wait(now_num_processes)
 
     def render(self, mode='human'):
         imgs = self.get_images()
