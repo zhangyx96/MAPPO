@@ -9,8 +9,10 @@ class Scenario(BaseScenario):
         # set any world properties first
         world.dim_c = 2
         num_adversaries = 2
-        num_good_agents = 2
-        num_landmarks = 2
+        num_good_agents = 1
+        num_landmarks = 1
+        self.num_adversaries = num_adversaries
+        self.num_good_agents = num_good_agents
         num_agents = num_adversaries + num_good_agents # deactivate "good" agent
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
@@ -41,24 +43,6 @@ class Scenario(BaseScenario):
         chosen_action = np.array([0,0], dtype=np.float32)
         return chosen_action
 
-    # def reset_world(self, world):
-    #     # random properties for agents
-    #     for i, agent in enumerate(world.agents):
-    #         agent.color = np.array([0.35, 0.85, 0.35]) if not agent.adversary else np.array([0.85, 0.35, 0.35])
-    #         # random properties for landmarks
-    #     for i, landmark in enumerate(world.landmarks):
-    #         landmark.color = np.array([0, 0, 0])
-    #     # set random initial states
-    #     for i, landmark in enumerate(world.landmarks):
-    #         if not landmark.boundary:
-    #             landmark.state.p_pos = np.random.uniform(-0.9, +0.9, world.dim_p)
-    #             landmark.state.p_vel = np.zeros(world.dim_p)
-
-    #     for agent in world.agents:
-    #         agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
-    #         agent.state.p_vel = np.zeros(world.dim_p)
-    #         agent.state.c = np.zeros(world.dim_c)
-
     def reset_world(self, world):
         balls = []
         agents = []
@@ -81,13 +65,8 @@ class Scenario(BaseScenario):
                 ball.state.p_pos = np.random.uniform(-1, +1, world.dim_p) + landmark.state.p_pos
                 ball.state.p_vel = np.zeros(world.dim_p)
                 ball.state.c = np.zeros(world.dim_c)
-                # print(self.sample_radius)
-                # print('landmark_pos',landmark.state.p_pos)
-                # print('ball_pos',ball.state.p_pos)
-                # print('distance',np.sqrt(np.sum(np.square(landmark.state.p_pos - ball.state.p_pos))))
         for agent in agents:
             agent.state.p_pos = np.random.uniform(-1, 1, world.dim_p) + balls[0].state.p_pos
-            #agent.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
             agent.state.p_vel = np.zeros(world.dim_p)
             agent.state.c = np.zeros(world.dim_c)
 
@@ -116,35 +95,6 @@ class Scenario(BaseScenario):
         dist_min = agent1.size + agent2.size
         return True if dist < dist_min else False
 
-    # return all agents that are not adversaries
-    def good_agents(self, world):
-        return [agent for agent in world.agents if not agent.adversary]
-
-    # return all adversarial agents
-    def adversaries(self, world):
-        return [agent for agent in world.agents if agent.adversary]
-
-
-    # def reward(self, agent, world):
-    #     # Agents are rewarded based on minimum agent distance to each landmark
-    #     rew = 0
-    #     for l in world.landmarks:
-    #         dists = [np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos))) for a in world.agents if a.adversary == False]
-    #         rew -= min(dists)/self.num_good_agents
-    #         if min(dists) < agent.size + world.landmarks[0].size:
-    #             rew += 5/self.num_good_agents
-    #     return rew
-
-    # def reward(self, agent, world):
-    #     # Agents are rewarded based on minimum agent distance to each landmark
-    #     rew = 0
-    #     for l in world.landmarks:
-    #         dists = [np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos))) for a in world.agents if a.adversary == False]
-    #         rew -= min(dists)/self.num_good_agents
-    #         if min(dists) < agent.size + world.landmarks[0].size:
-    #             rew += 10/self.num_good_agents
-    #     return rew
-
     def reward(self, agent, world):
         # Agents are rewarded based on minimum agent distance to each landmark
         rew = 0
@@ -153,11 +103,16 @@ class Scenario(BaseScenario):
             if min(dists) < world.landmarks[0].size + agent.size:
                 rew += 1/self.num_good_agents
         return rew
-    
-    def reset_radius(self,sample_radius):
-        self.sample_radius = min(sample_radius,1.5)
-        self.target_bound = min(sample_radius/2,0.9)
 
+    # def reward(self, world):
+    #     # Agents are rewarded based on minimum agent distance to each landmark
+    #     rew = 0
+    #     for l in world.landmarks:
+    #         dists = [np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos))) for a in world.agents if a.adversary == False]
+    #         if min(dists) < world.landmarks[0].size + world.agents[0].size:
+    #             rew += 1/self.num_good_agents
+    #     return rew
+    
     def observation(self, agent, world):
         # get positions of all entities in this agent's reference frame
         landmark_pos = []
