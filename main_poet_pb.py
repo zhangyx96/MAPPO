@@ -57,11 +57,13 @@ def SampleNearby(pos, max_step, TB, M):
         return []
     else:
         for i in range(len(pos)):
-            pos_tmp = copy.deepcopy(pos[i])
+            #pos_tmp = copy.deepcopy(pos[i])
+            pos_tmp = pos[i]
             for j in range(TB):
                 pos_tmp = pos_tmp + np.random.uniform(-max_step, max_step, 2) 
                 pos_tmp = (pos_tmp+1)%2-1 #限制在(-1,+1)之间
-                pos_new.append(copy.deepcopy(pos_tmp))
+                #pos_new.append(copy.deepcopy(pos_tmp))
+                pos_new.append(pos_tmp)
         return pos_new
 
 def main():
@@ -221,13 +223,13 @@ def main():
     starts_agent = [] # save the agents pos in one env
     for j in range(args.num_processes): # sample the landmarks and balls
         for i in range(args.landmark_num):
-            landmark_location = np.random.uniform(-1, +1, 2)   # landmark位置均匀分布
-            ball_location = np.random.uniform(-0.2, +0.2, 2) + landmark_location # ball位置在landmark坐标周围均匀分布
-            starts_landmark.append(copy.deepcopy(landmark_location)) # 存入list
-            starts_balls.append(copy.deepcopy(ball_location))
+            landmark_location = np.random.uniform(-0.8, +0.8, 2)   # landmark位置均匀分布
+            ball_location = np.random.uniform(-0.1, +0.1, 2) + landmark_location # ball位置在landmark坐标周围均匀分布
+            starts_landmark.append(landmark_location) # 存入list
+            starts_balls.append(ball_location)
         for i in range(args.adv_num): # sample the agents
-            agent_location = np.random.uniform(-0.2, +0.2, 2) + ball_location # agent位置在最后一个ball坐标周围均匀分布
-            starts_agent.append(copy.deepcopy(agent_location))
+            agent_location = np.random.uniform(-0.1, +0.1, 2) + ball_location # agent位置在最后一个ball坐标周围均匀分布
+            starts_agent.append(agent_location)
         pos_buffer.append(starts_agent + starts_balls + starts_landmark)
         starts_agent = []
         starts_balls = []
