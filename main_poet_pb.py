@@ -213,7 +213,6 @@ def main():
     fix_iter = 10 # 保证经过fix_iter之后，再向外扩
     count_fix = 0 # 记录fix_training的轮数
     reproduce_flag = 0 # 是否生成新环境的标志
-    eval_iter = 5  
     curri = 0
 
     ## 生成初始的环境
@@ -228,7 +227,7 @@ def main():
             starts_landmark.append(landmark_location) # 存入list
             starts_balls.append(ball_location)
         for i in range(args.adv_num): # sample the agents
-            agent_location = np.random.uniform(-0.1, +0.1, 2) + ball_location # agent位置在最后一个ball坐标周围均匀分布
+            agent_location = np.random.uniform(-0.3, +0.3, 2) + ball_location # agent位置在最后一个ball坐标周围均匀分布
             starts_agent.append(agent_location)
         pos_buffer.append(starts_agent + starts_balls + starts_landmark)
         starts_agent = []
