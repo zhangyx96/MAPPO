@@ -383,12 +383,14 @@ def main():
             good_children_starts = []
             while curri < len(newsample_starts) and newsample_starts != []:
                 if len(newsample_starts) - curri < args.num_processes:
-                    starts = copy.deepcopy(newsample_starts[curri: len(newsample_starts)])
+                    #starts = copy.deepcopy(newsample_starts[curri: len(newsample_starts)])
+                    starts = newsample_starts[curri: len(newsample_starts)]
                     now_num_processes = len(newsample_starts)-curri
                     obs = envs.new_starts_obs(starts, now_agent_num, now_num_processes)
                     curri = len(newsample_starts)
                 else:
-                    starts = copy.deepcopy(newsample_starts[curri: curri + args.num_processes])
+                    #starts = copy.deepcopy(newsample_starts[curri: curri + args.num_processes])
+                    starts = newsample_starts[curri: curri + args.num_processes]
                     now_num_processes = args.num_processes
                     obs = envs.new_starts_obs(starts, now_agent_num, now_num_processes)
                     curri += args.num_processes
@@ -469,11 +471,13 @@ def main():
                                         action_log_prob_list[i], value_list[i], torch.tensor(reward[:, i].reshape(-1,1)), masks, bad_masks)
                 for i in range(len(infos)):# 这里需要换成后五帧的信息
                     if infos[i][0] < Cmax and infos[i][0] > Cmin:
-                        good_children_starts.append(copy.deepcopy(starts[i]))
+                        #good_children_starts.append(copy.deepcopy(starts[i]))
+                        good_children_starts.append(starts[i])
             if len(good_children_starts) > N_new:
                 add_starts = random.sample(good_children_starts, N_new)
             else:
-                add_starts = copy.deepcopy(good_children_starts)
+                #add_starts = copy.deepcopy(good_children_starts)
+                add_starts = good_children_starts
             print("add_num: ",len(add_starts))
             if len(pos_buffer) + len(add_starts) <= buffer_length:
                 pos_buffer = pos_buffer + add_starts
