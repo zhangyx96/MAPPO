@@ -365,7 +365,8 @@ def main():
                 del_num = 0 # 删去的点数量
                 for i in range(len(cover_info_list)):
                     if cover_info_list[i]> Cmax: # 如果cover_rate大于Cmax,放进parents_list
-                        parent_starts.append(copy.deepcopy(pos_buffer[i-del_num]))  #index要减去删去的点的数量
+                        #parent_starts.append(copy.deepcopy(pos_buffer[i-del_num]))  #index要减去删去的点的数量
+                        parent_starts.append(pos_buffer[i-del_num])  #index要减去删去的点的数量
                         del pos_buffer[i-del_num]
                         del_num += 1
                 print('[parent_num]:', len(parent_starts))
@@ -375,7 +376,8 @@ def main():
 
         ## reproduce_flag==1， 开始生成新的环境
         else:
-            starts = copy.deepcopy(parent_starts) #此时的select_starts暂时定为，训练环节最后一个选出来的点(简单点)
+            #starts = copy.deepcopy(parent_starts) #此时的select_starts暂时定为，训练环节最后一个选出来的点(简单点)
+            starts = parent_starts
             newsample_starts = SampleNearby(starts, max_step, TB, M)
             print("[newsample]:",len(newsample_starts))
             #需要测试逐个是否满足要求，然后把满足要求的加入到archive中
