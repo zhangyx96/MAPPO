@@ -60,7 +60,7 @@ def SampleNearby(pos, max_step, TB, M):
             #pos_tmp = copy.deepcopy(pos[i])
             pos_tmp = pos[i]
             for j in range(TB):
-                pos_tmp = pos_tmp + np.random.uniform(-max_step, max_step, 2) 
+                pos_tmp = pos_tmp + np.random.uniform(-max_step, max_step, 6) 
                 pos_tmp = (pos_tmp+1)%2-1 #限制在(-1,+1)之间
                 #pos_new.append(copy.deepcopy(pos_tmp))
                 pos_new.append(pos_tmp)
