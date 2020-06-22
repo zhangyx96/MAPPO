@@ -204,7 +204,7 @@ def main():
     curri = 0
     N_new = 1000 # 每次扩展最多能放进archive的是多少个点
     max_step = 0.1 # sample_nearby 参数
-    TB = 2  # sample_nearby 参数
+    TB = 4  # sample_nearby 参数
     # Rmin = 0.2  # Reward阈值
     # Rmax = 0.6  
     Cmin = 0.4  # cover_rate阈值

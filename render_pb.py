@@ -31,7 +31,7 @@ log_interval = 10
 if __name__ == '__main__':
     args = get_args()
     n_episodes = 50
-    episode_length = 150
+    episode_length = 200
     ifi = 1 / 30
     gif_path = './gifs'
     success_rate = 0
@@ -61,6 +61,7 @@ if __name__ == '__main__':
             frames = []
             frames.append(env.render('rgb_array')[0])
         # env.render('human')
+        t_i = 0
         for t_i in range(episode_length):
             calc_start = time.time()
             # rearrange observations to be per agent, and convert to torch Variable
@@ -89,9 +90,9 @@ if __name__ == '__main__':
                 ac[a] = 1
                 actions.append(ac)
             obs, rewards, dones, infos = env.step(actions)
-            if t_i == n_episodes-1:
+            if t_i == episode_length - 1:
                 rwd = rewards[0] + rwd
-                print(ep_i,'reward',rewards[0])
+                print(ep_i,'reward',rewards)
             masks.fill_(0.0 if dones else 1.0)
             if save_gifs:
                 frames.append(env.render('rgb_array')[0])
