@@ -46,15 +46,15 @@ class Scenario(BaseScenario):
 
     def reset_world(self, world):
         # random properties for agents
-        ball_color = [[0,0,0.5],[0,0.5,0]]
-        target_color = [[0,0,0.8],[0,0.8,0]]
+        # ball_color = [[0,0,0.5],[0,0.5,0]]
+        # target_color = [[0,0,0.8],[0,0.8,0]]
         for i, agent in enumerate(world.agents):
-            #agent.color = np.array([0.35, 0.85, 0.35]) if not agent.adversary else np.array([0.85, 0.35, 0.35])
-            agent.color = np.array(ball_color[i-self.num_adversaries]) if not agent.adversary else np.array([0.85, 0.35, 0.35])
+            agent.color = np.array([0.35, 0.85, 0.35]) if not agent.adversary else np.array([0.85, 0.35, 0.35])
+            #agent.color = np.array(ball_color[i-self.num_adversaries]) if not agent.adversary else np.array([0.85, 0.35, 0.35])
             # random properties for landmarks
         for i, landmark in enumerate(world.landmarks):
-            #landmark.color = np.array([0, 0, 0])
-            landmark.color = np.array(target_color[i])
+            landmark.color = np.array([0, 0, 0])
+            #landmark.color = np.array(target_color[i])
         # set random initial states
         for i, landmark in enumerate(world.landmarks):
             if not landmark.boundary:
@@ -62,7 +62,7 @@ class Scenario(BaseScenario):
                 landmark.state.p_vel = np.zeros(world.dim_p)
 
         for agent in world.agents:
-            agent.state.p_pos = np.random.uniform(-0.6, +0.6, world.dim_p)
+            agent.state.p_pos = np.random.uniform(-0.5, +0.5, world.dim_p)
             agent.state.p_vel = np.zeros(world.dim_p)
             agent.state.c = np.zeros(world.dim_c)
 
