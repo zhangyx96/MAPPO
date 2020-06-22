@@ -50,7 +50,7 @@ def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
     else:
         return SubprocVecEnv([get_env_fn(i) for i in range(n_rollout_threads)])
 
-def SampleNearby(pos, max_step, TB, M):
+def SampleNearby(pos, max_step, TB, total_num):
     pos = pos + [] 
     pos_new = [] # save the new pos
     if pos == []:
@@ -60,7 +60,7 @@ def SampleNearby(pos, max_step, TB, M):
             #pos_tmp = copy.deepcopy(pos[i])
             pos_tmp = pos[i]
             for j in range(TB):
-                pos_tmp = pos_tmp + np.random.uniform(-max_step, max_step, 6) 
+                pos_tmp = pos_tmp + np.random.uniform(-max_step, max_step, (total_num,2)) 
                 pos_tmp = (pos_tmp+1)%2-1 #限制在(-1,+1)之间
                 #pos_new.append(copy.deepcopy(pos_tmp))
                 pos_new.append(pos_tmp)
@@ -204,13 +204,12 @@ def main():
     curri = 0
     N_new = 1000 # 每次扩展最多能放进archive的是多少个点
     max_step = 0.1 # sample_nearby 参数
-    TB = 3  # sample_nearby 参数
-    M = 5 * args.num_processes 
-    Rmin = 0.2  # Reward阈值
-    Rmax = 0.6  
+    TB = 2  # sample_nearby 参数
+    # Rmin = 0.2  # Reward阈值
+    # Rmax = 0.6  
     Cmin = 0.4  # cover_rate阈值
-    Cmax = 0.8
-    fix_iter = 10 # 保证经过fix_iter之后，再向外扩
+    Cmax = 0.9
+    fix_iter = 100 # 保证经过fix_iter之后，再向外扩
     count_fix = 0 # 记录fix_training的轮数
     reproduce_flag = 0 # 是否生成新环境的标志
     curri = 0
@@ -222,23 +221,23 @@ def main():
     starts_agent = [] # save the agents pos in one env
     for j in range(args.num_processes): # sample the landmarks and balls
         for i in range(args.landmark_num):
-            landmark_location = np.random.uniform(-0.8, +0.8, 2)   # landmark位置均匀分布
-            ball_location = np.random.uniform(-0.1, +0.1, 2) + landmark_location # ball位置在landmark坐标周围均匀分布
+            landmark_location = np.random.uniform(-0.4, +0.4, 2)   # landmark位置均匀分布
+            ball_location = np.random.uniform(-0.2, +0.2, 2) + landmark_location # ball位置在landmark坐标周围均匀分布
             starts_landmark.append(landmark_location) # 存入list
             starts_balls.append(ball_location)
         for i in range(args.adv_num): # sample the agents
-            agent_location = np.random.uniform(-0.3, +0.3, 2) + ball_location # agent位置在最后一个ball坐标周围均匀分布
+            agent_location = np.random.uniform(-0.2, +0.2, 2) + ball_location[i] # agent位置在最后一个ball坐标周围均匀分布
             starts_agent.append(agent_location)
         pos_buffer.append(starts_agent + starts_balls + starts_landmark)
         starts_agent = []
         starts_balls = []
         starts_landmark = []
 
-
     for j in range(num_updates):
         print('[count_fix]:', count_fix)
         if not reproduce_flag: # 不生成新的环境，reproduce_flag初始为0
-            cover_info_list = []
+            mean_cover_list = []
+            last_cover_rate = []
             now_num_processes_train = min(args.num_processes,len(pos_buffer)) # 并行环境数
             obs = envs.new_starts_obs(pos_buffer, now_agent_num, now_num_processes_train) # 获取初始obs
             ## 初始化rollouts
@@ -274,6 +273,7 @@ def main():
             ##
             ## start training
             ##
+            cover_rate_list = []
             for step in range(args.num_steps): 
                 ## Sample actions
                 value_list, action_list, action_log_prob_list, recurrent_hidden_states_list = [], [], [], []
@@ -300,7 +300,7 @@ def main():
                 obs, reward, done, infos = envs.step(action, now_num_processes_train)
                 masks = torch.ones(now_num_processes_train, 1)
                 bad_masks = torch.ones(now_num_processes_train, 1)
-
+                cover_rate_list.append(infos)
                 if args.assign_id:
                     for i in range(now_agent_num):
                         vec_id = np.zeros((now_num_processes_train, now_agent_num))
@@ -316,10 +316,17 @@ def main():
                         rollouts[i].insert(torch.tensor(obs.reshape(now_num_processes_train, -1)), torch.tensor(obs[:,i,:]), 
                                     recurrent_hidden_states, action_list[i],
                                     action_log_prob_list[i], value_list[i], torch.tensor(reward[:, i].reshape(-1,1)), masks, bad_masks)
+            
+            #mean_reward = mean_reward/args.num_steps  # mean reward (now_num_processes_train, now_agent_num)
 
             writer.add_scalars('agent0/cover_rate',{'cover_rate': np.mean(infos)},j)
+            cover_rate_list = np.stack(cover_rate_list,axis=2)
+            cover_rate_list = np.mean(cover_rate_list[:,:,-10:],axis=2)
+            # for i in range(len(infos)):
+            #     cover_info_list.append(infos[i][0]) 
             for i in range(len(infos)):
-                cover_info_list.append(infos[i][0]) 
+                mean_cover_list.append(cover_rate_list[i][0]) 
+            #pdb.set_trace()
 
             with torch.no_grad():
                 next_value_list = []
@@ -356,33 +363,35 @@ def main():
                     print("update num: " + str(j+1) + " value loss: " + str(value_loss))
 
             ## 当满足fix_iter时，把最后一次满足parent条件的点取出
-            print("cover_info_list: ", len(cover_info_list))
+            print("cover_info_list: ", len(mean_cover_list))
             if count_fix == fix_iter:
                 count_fix = 0 # counter归零
                 reproduce_flag = 1 # reproduce flag设为True
-                parent_starts = [] # 保存parents_starts
+                parent_list = [] # 保存parents_starts
                 easy_count = 0 
                 del_num = 0 # 删去的点数量
-                for i in range(len(cover_info_list)):
-                    if cover_info_list[i]> Cmax: # 如果cover_rate大于Cmax,放进parents_list
-                        parent_starts.append(copy.deepcopy(pos_buffer[i-del_num]))  #index要减去删去的点的数量
+                for i in range(len(mean_cover_list)):
+                    if mean_cover_list[i]> Cmax: # 如果cover_rate大于Cmax,放进parents_list
+                        parent_list.append(copy.deepcopy(pos_buffer[i-del_num]))  #index要减去删去的点的数量
                         del pos_buffer[i-del_num]
                         del_num += 1
-                print('[parent_num]:', len(parent_starts))
+                print('[parent_num]:', len(parent_list))
             else:
                 count_fix += 1
             print('##############################')
 
         ## reproduce_flag==1， 开始生成新的环境
         else:
-            starts = copy.deepcopy(parent_starts) #此时的select_starts暂时定为，训练环节最后一个选出来的点(简单点)
-            newsample_starts = SampleNearby(starts, max_step, TB, M)
+            starts = copy.deepcopy(parent_list) #此时的select_starts暂时定为，训练环节最后一个选出来的点(简单点)
+            total_num = args.adv_num + args.good_num + args.landmark_num
+            newsample_starts = SampleNearby(starts, max_step, TB, total_num)
             print("[newsample]:",len(newsample_starts))
             #需要测试逐个是否满足要求，然后把满足要求的加入到archive中
             curri = 0
             add_starts = []
             good_children_starts = []
             while curri < len(newsample_starts) and newsample_starts != []:
+                #pdb.set_trace()
                 if len(newsample_starts) - curri < args.num_processes:
                     #starts = copy.deepcopy(newsample_starts[curri: len(newsample_starts)])
                     starts = newsample_starts[curri: len(newsample_starts)]
@@ -427,7 +436,10 @@ def main():
                         utils.update_linear_schedule(
                             agent[i].optimizer, j, num_updates,
                             agent[i].optimizer.lr if args.algo == "acktr" else args.lr)
-
+                ##
+                ## start training
+                ##
+                cover_rate_list = []   # store all the infos
                 for step in range(args.num_steps):
                     # Sample actions
                     value_list, action_list, action_log_prob_list, recurrent_hidden_states_list = [], [], [], []
@@ -452,9 +464,10 @@ def main():
                             one_env_action.append(one_hot_action)
                         action.append(one_env_action)
                     obs, reward, done, infos = envs.step(action, now_num_processes)
+                    cover_rate_list.append(infos)
                     masks = torch.ones(now_num_processes, 1)
                     bad_masks = torch.ones(now_num_processes, 1)
-
+                    
                     if args.assign_id:
                         for i in range(now_agent_num):
                             vec_id = np.zeros((now_num_processes, now_agent_num))
@@ -470,8 +483,12 @@ def main():
                             rollouts[i].insert(torch.tensor(obs.reshape(now_num_processes, -1)), torch.tensor(obs[:,i,:]), 
                                         recurrent_hidden_states, action_list[i],
                                         action_log_prob_list[i], value_list[i], torch.tensor(reward[:, i].reshape(-1,1)), masks, bad_masks)
-                for i in range(len(infos)):# 这里需要换成后五帧的信息
-                    if infos[i][0] < Cmax and infos[i][0] > Cmin:
+
+
+                cover_rate_list = np.stack(cover_rate_list,axis=2)
+                cover_rate_list = np.mean(cover_rate_list[:,:,-10:],axis=2)       #取最后10帧的均值           
+                for i in range(len(infos)):# 这里换成后五帧的信息
+                    if cover_rate_list[i][0] < Cmax and cover_rate_list[i][0] > Cmin:
                         #good_children_starts.append(copy.deepcopy(starts[i]))
                         good_children_starts.append(starts[i])
             if len(good_children_starts) > N_new:

@@ -15,7 +15,7 @@ import torch.optim as optim
 from torch.distributions import Normal, Categorical
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 from tensorboardX import SummaryWriter
-from utils.make_env import make_env
+from utils.make_env_poet_pb import make_env
 from torch.autograd import Variable
 import imageio
 #from a2c_ppo_acktr.model import MLPBase, CNNBase
@@ -25,7 +25,7 @@ import time
 
 # Parameters
 gamma = 0.95
-save_gifs = True
+save_gifs = False
 seed = 1
 log_interval = 10
 if __name__ == '__main__':

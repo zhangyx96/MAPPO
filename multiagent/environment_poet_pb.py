@@ -101,16 +101,14 @@ class MultiAgentEnv(gym.Env):
         share_reward = self._get_share()
         for agent in self.agents:
             obs_n.append(self._get_obs(agent))
-            reward_n.append(share_reward + self._get_reward(agent))
+            reward_n.append(self._get_reward(agent))
             done_n.append(self._get_done(agent))
 
             info_n.append(self._get_info(agent))
-
         # all agents get total reward in cooperative case
         reward = np.sum(reward_n)
         if self.shared_reward:
             reward_n = [reward] * self.n
-
         return obs_n, reward_n, done_n, info_n
 
     # def reset(self):
@@ -158,7 +156,7 @@ class MultiAgentEnv(gym.Env):
         return obs_n
 
 
-    def reset(self, now_agent_num):
+    def reset(self):
         self.reset_callback(self.world)
         self._reset_render()
         # record observations for each agent

@@ -9,8 +9,8 @@ class Scenario(BaseScenario):
         # set any world properties first
         world.dim_c = 2
         num_adversaries = 2
-        num_good_agents = 1
-        num_landmarks = 1
+        num_good_agents = 2
+        num_landmarks = 2
         self.num_adversaries = num_adversaries
         self.num_good_agents = num_good_agents
         num_agents = num_adversaries + num_good_agents # deactivate "good" agent
@@ -60,13 +60,13 @@ class Scenario(BaseScenario):
         random.shuffle(balls)
         for ball,landmark in zip(balls, world.landmarks):
             if not landmark.boundary:
-                landmark.state.p_pos = np.random.uniform(-1, +1, world.dim_p)
+                landmark.state.p_pos = np.random.uniform(-0.5, +0.5, world.dim_p)
                 landmark.state.p_vel = np.zeros(world.dim_p)
-                ball.state.p_pos = np.random.uniform(-1, +1, world.dim_p) + landmark.state.p_pos
+                ball.state.p_pos = np.random.uniform(-0.5, +0.5, world.dim_p) + landmark.state.p_pos
                 ball.state.p_vel = np.zeros(world.dim_p)
                 ball.state.c = np.zeros(world.dim_c)
         for agent in agents:
-            agent.state.p_pos = np.random.uniform(-1, 1, world.dim_p) + balls[0].state.p_pos
+            agent.state.p_pos = np.random.uniform(-0.5, 0.5, world.dim_p) + balls[0].state.p_pos
             agent.state.p_vel = np.zeros(world.dim_p)
             agent.state.c = np.zeros(world.dim_c)
 
