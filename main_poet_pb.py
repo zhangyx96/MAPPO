@@ -209,7 +209,7 @@ def main():
     # Rmax = 0.6  
     Cmin = 0.4  # cover_rate阈值
     Cmax = 0.9
-    fix_iter = 100 # 保证经过fix_iter之后，再向外扩
+    fix_iter = 50 # 保证经过fix_iter之后，再向外扩
     count_fix = 0 # 记录fix_training的轮数
     reproduce_flag = 0 # 是否生成新环境的标志
     curri = 0
@@ -221,7 +221,7 @@ def main():
     starts_agent = [] # save the agents pos in one env
     for j in range(args.num_processes): # sample the landmarks and balls
         for i in range(args.landmark_num):
-            landmark_location = np.random.uniform(-0.4, +0.4, 2)   # landmark位置均匀分布
+            landmark_location = np.random.uniform(-1, +1, 2)   # landmark位置均匀分布
             ball_location = np.random.uniform(-0.2, +0.2, 2) + landmark_location # ball位置在landmark坐标周围均匀分布
             starts_landmark.append(landmark_location) # 存入list
             starts_balls.append(ball_location)
