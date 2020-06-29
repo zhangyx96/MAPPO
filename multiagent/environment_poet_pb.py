@@ -123,14 +123,27 @@ class MultiAgentEnv(gym.Env):
     #         obs_n.append(self._get_obs(agent))
     #     return obs_n
 
-    def new_starts_obs(self, starts, now_agent_num, index_index):
-        # index_index代表是starts中的第几个,顺序agent-ball-landmark
+    # def new_starts_obs(self, starts, now_agent_num, index_index):
+    #     # index_index代表是starts中的第几个,顺序agent-ball-landmark
+    #     for i, agent in enumerate(self.world.agents):  # 这里要用self.world.agents,不能用self.agents
+    #         agent.state.p_pos = starts[index_index][i]
+    #         agent.state.p_vel = np.zeros(self.world.dim_p)
+    #         agent.state.c = np.zeros(self.world.dim_c)
+    #     for i, landmark in enumerate(self.world.landmarks):
+    #         landmark.state.p_pos = starts[index_index][i+len(self.world.agents)]
+    #         landmark.state.p_vel = np.zeros(self.world.dim_p)
+    #     self._reset_render()
+    #     obs_n = []
+    #     for agent in self.agents:
+    #         obs_n.append(self._get_obs(agent))
+    #     return obs_n
+    def new_starts_obs(self, starts, now_agent_num):
         for i, agent in enumerate(self.world.agents):  # 这里要用self.world.agents,不能用self.agents
-            agent.state.p_pos = starts[index_index][i]
+            agent.state.p_pos = starts[i]
             agent.state.p_vel = np.zeros(self.world.dim_p)
             agent.state.c = np.zeros(self.world.dim_c)
         for i, landmark in enumerate(self.world.landmarks):
-            landmark.state.p_pos = starts[index_index][i+len(self.world.agents)]
+            landmark.state.p_pos = starts[i+len(self.world.agents)]
             landmark.state.p_vel = np.zeros(self.world.dim_p)
         self._reset_render()
         obs_n = []

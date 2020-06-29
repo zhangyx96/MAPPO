@@ -24,8 +24,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
         elif cmd[0] == 'new_starts_obs':
             now_agent_num = cmd[1]
             starts = cmd[2]
-            index_index = cmd[3]
-            ob = env.new_starts_obs(starts,now_agent_num,index_index)
+            ob = env.new_starts_obs(starts,now_agent_num)
             remote.send(ob)
         elif cmd[0:5] == 'reset':
             now_agent_num = int(cmd[5:])
@@ -110,40 +109,25 @@ class SubprocVecEnv(VecEnv):
     #     return np.stack([remote.recv() for remote in self.remotes])
 
     def new_starts_obs(self, starts, now_agent_num, now_num_processes):
-        tmp_list = ['new_starts_obs', now_agent_num, starts]
         i = 0
         results = []
         for remote in self.remotes:
             if i < now_num_processes:
-                index_index = [i]
-                remote.send((tmp_list + index_index, None))
+                tmp_list = ['new_starts_obs', now_agent_num, starts[i]]
+                remote.send((tmp_list, None))
                 i += 1
         i = 0
         for remote in self.remotes:
             if i < now_num_processes:
                 results.append(remote.recv())
                 i += 1
-        return np.stack(results)
+        # import pdb
+        # pdb.set_trace()
+        if results:   #判断是否为空，若为空stack函数会报错
+            return np.stack(results)
+        else:
+            assert 0
 
-    # using by main_reverse 
-    # def new_starts_obs(self, starts, now_agent_num):
-    #     self.new_starts_obs_async(starts, sample_index, now_agent_num)
-    #     return self.new_starts_obs_wait()
-
-    # def new_starts_obs_async(self, starts, sample_index, now_agent_num):
-    #     tmp_list = ['new_starts_obs', now_agent_num, starts, sample_index]
-    #     i = 0
-    #     for remote in self.remotes:
-    #         index_index = [i] # sample_index的index
-    #         remote.send((tmp_list + index_index, None))
-    #         i += 1
-    #     self.waiting = True
-
-    # def new_starts_obs_wait(self):
-    #     results = [remote.recv() for remote in self.remotes]
-    #     self.waiting = False
-    #     obs, rou_index = zip(*results)
-    #     return np.stack(obs), np.stack(rou_index)
 
     def init_set(self, now_agent_num, ratio):
         hard_num = int(self.length * ratio)
