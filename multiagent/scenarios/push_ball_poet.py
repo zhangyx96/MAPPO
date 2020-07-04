@@ -9,8 +9,8 @@ class Scenario(BaseScenario):
         # set any world properties first
         world.dim_c = 2
         num_adversaries = 2
-        num_good_agents = 4
-        num_landmarks = 4
+        num_good_agents = 2
+        num_landmarks = 2
         self.num_adversaries = num_adversaries
         self.num_good_agents = num_good_agents
         num_agents = num_adversaries + num_good_agents # deactivate "good" agent
