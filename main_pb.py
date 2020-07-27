@@ -157,7 +157,7 @@ def main():
                               args.adv_num, i, args.assign_id)
         rollouts.append(rollout)
 
-    obs = envs.reset()  #[num_process[n_agents[obs_dim]]]
+    obs = envs.reset()  # [num_process[n_agents[obs_dim]]]
     if args.assign_id:
         for i in range(args.adv_num):    
             vec_id = np.zeros((args.num_processes, args.adv_num))
@@ -202,12 +202,11 @@ def main():
             value_list, action_list, action_log_prob_list, recurrent_hidden_states_list = [], [], [], []
             with torch.no_grad():
                 for i in range(args.adv_num):
-                    #pdb.set_trace()
                     value, action, action_log_prob, recurrent_hidden_states = actor_critic[i].act(
                         rollouts[i].share_obs[step],
                         rollouts[i].obs[step], args.adv_num, rollouts[i].recurrent_hidden_states[step],
                         rollouts[i].masks[step])
-                    #import pdb; pdb.set_trace()
+                    import pdb; pdb.set_trace()
                     value_list.append(value)
                     action_list.append(action)
                     action_log_prob_list.append(action_log_prob)

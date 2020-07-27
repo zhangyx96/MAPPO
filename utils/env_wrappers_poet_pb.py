@@ -183,12 +183,20 @@ class SubprocVecEnv(VecEnv):
         self.closed = True
 
 
+def splitobs(obs, keepdims=True):
+    '''
+        Split obs into list of single agent obs.
+        Args:
+            obs: dictionary of numpy arrays where first dim in each array is agent dim
+    '''
+    n_agents = obs[list(obs.keys())[0]].shape[0]
+    return [{k: v[[i]] if keepdims else v[i] for k, v in obs.items()} for i in range(n_agents)]
+
 class DummyVecEnv(VecEnv):
     def __init__(self, env_fns):
         self.envs = [fn() for fn in env_fns]
         env = self.envs[0]
-        self.length = len(env_fns)
-        #import pdb; pdb.set_trace()       
+        self.length = len(env_fns) 
         VecEnv.__init__(self, self.length, env.observation_space, env.action_space)
         if all([hasattr(a, 'adversary') for a in env.agents]):
             self.agent_types = ['adversary' if a.adversary else 'agent' for a in

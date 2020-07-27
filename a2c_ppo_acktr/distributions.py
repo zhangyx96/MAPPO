@@ -32,6 +32,7 @@ class FixedCategorical(torch.distributions.Categorical):
         return self.probs.argmax(dim=-1, keepdim=True)
 
 
+
 # Normal
 class FixedNormal(torch.distributions.Normal):
     def log_probs(self, actions):
@@ -70,7 +71,25 @@ class Categorical(nn.Module):
 
     def forward(self, x):
         x = self.linear(x)
+        print('x',x)
         return FixedCategorical(logits=x)
+
+class MultiCategorical(nn.Module):
+    def __init__(self, num_inputs, num_outputs, num_vecs):
+        super(MultiCategorical, self).__init__()
+
+        init_ = lambda m: init(
+            m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            gain=0.01)
+
+        self.linears = [init_(nn.Linear(num_inputs, num_outputs)) for i in range(num_vecs)]
+        self.linears = nn.ModuleList(self.linears) 
+
+    def forward(self, x):
+        xs = [l(x) for l in self.linears]
+        return [FixedCategorical(logits=x) for x in xs]
 
 
 class DiagGaussian(nn.Module):

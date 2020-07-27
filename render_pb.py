@@ -25,13 +25,13 @@ import time
 
 # Parameters
 gamma = 0.95
-save_gifs = False
+save_gifs = True
 seed = 1
 log_interval = 10
 if __name__ == '__main__':
     args = get_args()
     n_episodes = 50
-    episode_length = 200
+    episode_length = 500
     ifi = 1 / 30
     gif_path = './gifs'
     success_rate = 0

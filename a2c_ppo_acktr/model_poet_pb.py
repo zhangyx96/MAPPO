@@ -39,8 +39,6 @@ class Policy(nn.Module):
         # actor输入维度num_state，critic输入num_state*agent_num
 
         # self.base = base(obs_shape[0], agent_num, agent_i, **base_kwargs)
-
-        #import pdb; pdb.set_trace()
         self.agent_i = agent_i
 
         if dist is None:
@@ -71,10 +69,8 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, share_inputs, inputs, agent_num, rnn_hxs, masks, deterministic=False):
-        #print('adv_num',self.adv_num,'good_num',self.good_num,'landmark_num',self.landmark_num)
         value, actor_features, rnn_hxs = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks, 
                                                     adv_num=self.adv_num, good_num=self.good_num, landmark_num=self.landmark_num)
-        #value, actor_features, rnn_hxs, alpha_agent, alpha_landmark = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks)
         dist = self.dist(actor_features)
         if deterministic:
             action = dist.mode()
@@ -83,7 +79,7 @@ class Policy(nn.Module):
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
-
+ 
         return value, action, action_log_probs, rnn_hxs
     
     def update_num(self,adv_num, good_num, landmark_num):
@@ -122,7 +118,7 @@ class NNBase(nn.Module):
                     nn.init.constant_(param, 0)
                 elif 'weight' in name:
                     nn.init.orthogonal_(param)
-
+    
     @property
     def is_recurrent(self):
         return self._recurrent
@@ -255,7 +251,6 @@ class MLPBase(NNBase):
         self.train()
 
     def forward(self, share_inputs, inputs, agent_i, rnn_hxs, masks):
-        #import pdb; pdb.set_trace()
         share_obs = share_inputs
         obs = inputs
 
@@ -286,12 +281,16 @@ class ObsEncoder(nn.Module):
 
         self.adv_correlation_mat = nn.Parameter(torch.FloatTensor(hidden_size,hidden_size),requires_grad=True)
         nn.init.orthogonal_(self.adv_correlation_mat.data, gain=1)
+
         self.good_correlation_mat = nn.Parameter(torch.FloatTensor(hidden_size,hidden_size),requires_grad=True)
         nn.init.orthogonal_(self.good_correlation_mat.data, gain=1)
+
         self.landmark_correlation_mat = nn.Parameter(torch.FloatTensor(hidden_size,hidden_size),requires_grad=True)
         nn.init.orthogonal_(self.landmark_correlation_mat.data, gain=1)
+
         self.fc = nn.Sequential(
                     init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+
         #self.encoder_linear = init_(nn.Linear(3*hidden_size, hidden_size))
         # 加上激活函数 效果会有比较大的提升 虽然还是达不到标准
         self.encoder_linear = nn.Sequential(
@@ -314,6 +313,7 @@ class ObsEncoder(nn.Module):
         beta_adv_ij = torch.matmul(emb_self.view(batch_size,1,-1), self.adv_correlation_mat)
         beta_good_ij = torch.matmul(emb_self.view(batch_size,1,-1), self.good_correlation_mat)
         beta_landmark_ij = torch.matmul(emb_self.view(batch_size,1,-1), self.landmark_correlation_mat)
+        
         for i in range(adv_num-1):
             emb_adv.append(inputs[:, 4+2*i:4+2*(i+1)])
         good_offset = 4 + 2*(adv_num-1)

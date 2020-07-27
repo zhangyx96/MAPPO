@@ -23,7 +23,6 @@ from evaluation import evaluate
 
 from utils.make_env_poet_pb import make_env                         
 from utils.env_wrappers_poet_pb import SubprocVecEnv, DummyVecEnv
-import pdb
 import random
 import copy
 #import matplotlib.pyplot as plt
@@ -129,7 +128,7 @@ def main():
                 base_kwargs={'recurrent': args.recurrent_policy})
             ac.to(device)
             actor_critic.append(ac)
-    #import pdb; pdb.set_trace()
+
     
     if args.algo == 'a2c':
         agent = algo.A2C_ACKTR(
@@ -283,6 +282,7 @@ def main():
                             rollouts[i].share_obs[step],
                             rollouts[i].obs[step], now_agent_num, rollouts[i].recurrent_hidden_states[step],
                             rollouts[i].masks[step])
+                        import pdb; pdb.set_trace()
                         value_list.append(value)
                         action_list.append(action)
                         action_log_prob_list.append(action_log_prob)

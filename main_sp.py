@@ -299,42 +299,7 @@ def main():
                 rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:]))
                 rollouts[i].to(device)
 
-        #=================================================
-        #Test Uniform reward
-        # envs.reset_radius(999)
-        # obs = envs.reset()
-        # test_reward = 0
-        # for step in range(args.num_steps):
-        #     value_list, action_list, action_log_prob_list, recurrent_hidden_states_list = [], [], [], []
-        #     with torch.no_grad():
-        #         for i in range(args.agent_num):
-        #             #pdb.set_trace()
-        #             value, action, action_log_prob, recurrent_hidden_states = actor_critic[i].act(
-        #                 rollouts[i].share_obs[step],
-        #                 rollouts[i].obs[step], args.agent_num, rollouts[i].recurrent_hidden_states[step],
-        #                 rollouts[i].masks[step])
-        #             #import pdb; pdb.set_trace()
-        #             value_list.append(value)
-        #             action_list.append(action)
-        #             action_log_prob_list.append(action_log_prob)
-        #             recurrent_hidden_states_list.append(recurrent_hidden_states)
-        #     # Obser reward and next obs
-        #     action = []
-        #     for i in range(args.num_processes):
-        #         one_env_action = []
-        #         for k in range(args.agent_num):
-        #             one_hot_action = np.zeros(envs.action_space[0].n)
-        #             one_hot_action[action_list[k][i]] = 1
-        #             one_env_action.append(one_hot_action)
-        #         action.append(one_env_action)
-        #     obs, reward, done, infos = envs.step(action)
-        #     test_reward == test_reward + reward[0][0]/args.num_steps
-        # test_reward_list.append(test_reward)
-        # envs.reset_radius(sample_radius)
-        #=============================================================
-
-        # save model for every interval-th episode or for the last epoch     
-        #pdb.set_trace()   
+   
         if (j % args.save_interval == 0
                 or j == num_updates - 1) and args.save_dir != "":
             save_path = os.path.join(args.save_dir, args.algo)

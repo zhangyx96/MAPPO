@@ -208,6 +208,7 @@ class MultiCategoricalPd(Pd):
         self.flat = flat
         self.categoricals = list(map(CategoricalPd,
             tf.split(flat, np.array(nvec, dtype=np.int32), axis=-1)))
+        import pdb; pdb.set_trace()
     def flatparam(self):
         return self.flat
     def mode(self):
