@@ -83,7 +83,7 @@ class Policy(nn.Module):
             else:
                 action_log_probs.append(dist.log_probs(actions[action_count]))
                 action_count += 1
-        action_log_probs = torch.stack(action_log_probs, dim = 2)
+        action_log_probs = torch.stack(action_log_probs, dim = 2).squeeze(1)
         actions = torch.stack(actions, dim = 2).squeeze(1)
         
         #action_log_probs = [dist.log_probs(action) for dist, action in zip(dists, actions)]
@@ -106,21 +106,19 @@ class Policy(nn.Module):
         dists = [dist(actor_features) for dist in self.dists]
 
 
-        if deterministic:
-            actions = [dist.mode() for dist in dists]
-        else:
-            #actions = [dist.sample() for dist in dists]
-            actions = []
-            dist_entropy = []
-            for dist in dists:
-                if isinstance(dist, list):
-                    for fc in dist:    # fc refers FixedCategorical class
-                        actions.append(fc.sample())
-                        dist_entropy.append(fc.entropy().mean())
-                else:
-                    actions.append(dist.sample())
-                    dist_entropy.append(dist.entropy().mean())
-            dist_entropy = torch.stack(dist_entropy, dim = 2)
+
+        #actions = [dist.sample() for dist in dists]
+        actions = []
+        dist_entropy = []
+        for dist in dists:
+            if isinstance(dist, list):
+                for fc in dist:    # fc refers FixedCategorical class
+                    actions.append(fc.sample())
+                    dist_entropy.append(fc.entropy().mean())
+            else:
+                actions.append(dist.sample())
+                dist_entropy.append(dist.entropy().mean())
+        dist_entropy = torch.stack(dist_entropy).mean()
                     
 
         action_log_probs = []
@@ -133,7 +131,7 @@ class Policy(nn.Module):
             else:
                 action_log_probs.append(dist.log_probs(actions[action_count]))
                 action_count += 1
-        action_log_probs = torch.stack(action_log_probs, dim = 2)
+        action_log_probs = torch.stack(action_log_probs, dim = 2).squeeze(1)
                 
         return value, action_log_probs, dist_entropy, rnn_hxs
 
@@ -449,7 +447,7 @@ class ATTBase(NNBase):
         obs_beta_ij = torch.matmul(f_ii.view(batch_size,1,-1), self.correlation_mat)
         obs_encoder = []
         beta = []
-        for i in range(adv_num):
+        for i in range(good_num + adv_num):
             if i != agent_i:
                 f_ij = self.encoder(share_inputs[:, i*obs_dim:(i+1)*obs_dim], adv_num, good_num, box_num, ramp_num)     #[batch_size, hidden_size]
                 obs_encoder.append(f_ij)

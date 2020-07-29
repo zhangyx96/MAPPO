@@ -18,7 +18,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
             # if end-start > 0.7:
             #     print('********')
             # print('one_step: ',end-start)
-            if all(done):
+            if done:
                 ob = env.reset()
             remote.send((ob, reward, done, info))
         elif cmd[0] == 'new_starts_obs':
@@ -213,7 +213,7 @@ class DummyVecEnv(VecEnv):
         obs, rews, dones, infos = map(np.array, zip(*results))
         self.ts += 1
         for (i, done) in enumerate(dones):
-            if all(done): 
+            if all(dones): 
                 obs[i] = self.envs[i].reset()
                 self.ts[i] = 0
         self.actions = None

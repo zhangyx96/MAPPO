@@ -71,7 +71,6 @@ class Categorical(nn.Module):
 
     def forward(self, x):
         x = self.linear(x)
-        print('x',x)
         return FixedCategorical(logits=x)
 
 class MultiCategorical(nn.Module):

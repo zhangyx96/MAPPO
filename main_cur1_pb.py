@@ -345,7 +345,6 @@ def main():
                         action_log_prob_list.append(action_log_prob)
                         recurrent_hidden_states_list.append(recurrent_hidden_states)
                 # Obser reward and next obs
-                import pdb; pdb.set_trace()
                 action = []
                 for i in range(now_num_processes_train):
                     one_env_action = []

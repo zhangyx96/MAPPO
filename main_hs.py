@@ -62,7 +62,7 @@ def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
 
 def main():
     args = get_args()
-    model_dir = args.model_dir + '_' + str(args.adv_num) + str(args.good_num) + str(args.landmark_num)
+    model_dir = args.model_dir + '_' + str(args.adv_num) + str(args.good_num) 
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     if args.cuda and torch.cuda.is_available() and args.cuda_deterministic:
@@ -76,16 +76,12 @@ def main():
 
     torch.set_num_threads(1)
     device = torch.device("cuda" if args.cuda else "cpu")
-    writer = SummaryWriter("/home/zhangyx/MAPPO/logs_2"+args.model_dir+"/validation")
-
-    #envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-    #                    args.gamma, args.log_dir, device, False)
+    writer = SummaryWriter("/home/zhangyx/MAPPO/logs_2" + args.model_dir)
 
     envs = make_parallel_env(args.env_name, args.num_processes, args.seed, True)
     # env_test = make_env("simple_spread", discrete_action=True)
-
     share_base = ATTBase(hidden_size=256)
-    #share_base = ATTBase(envs.observation_space[0].shape[0], hidden_size=100)
+
     dist_movement = MultiCategorical(share_base.output_size, 11, 3) # movement的分布函数
     dist_pull = Categorical(share_base.output_size, 2) # pull的分布函数
     dist_lock = Categorical(share_base.output_size, 2) # lock的分布函数
@@ -94,28 +90,19 @@ def main():
     actor_critic_hider = []
     for i in range(args.adv_num):
         ac = Policy(
-            agent_i=i,
+            agent_i=i + args.good_num,
             base=share_base,
             dists=dists,
             base_kwargs={'recurrent': args.recurrent_policy})
         ac.to(device)
         actor_critic_seeker.append(ac)
     
-    # for i in range(args.good_num):
-    #     ac = Policy(
-    #         agent_i=i,
-    #         base=share_base,
-    #         dists=dists,
-    #         base_kwargs={'recurrent': args.recurrent_policy})
-    #     ac.to(device)
-    #     actor_critic_hider.append(ac)
-
     agent_seeker = []
     agent_hider = []
     for i in range(args.adv_num):
         agent_seeker.append(algo.PPO(
             actor_critic_seeker[i],
-            i,
+            i + args.good_num,
             args.clip_param,
             args.ppo_epoch,
             args.num_mini_batch,
@@ -125,21 +112,6 @@ def main():
             eps=args.eps,
             max_grad_norm=args.max_grad_norm,
             model_dir = args.model_dir))
-    # for i in range(args.good_num):
-    #     agent_hider.append(algo.PPO(
-    #         actor_critic_seeker[i],
-    #         i,
-    #         args.clip_param,
-    #         args.ppo_epoch,
-    #         args.num_mini_batch,
-    #         args.value_loss_coef,
-    #         args.entropy_coef,
-    #         lr=args.lr,
-    #         eps=args.eps,
-    #         max_grad_norm=args.max_grad_norm,
-    #         model_dir = args.model_dir))
-
-
      
     ## trainning configs
     num_updates = int(args.num_env_steps) // args.num_steps // args.num_processes
@@ -155,7 +127,7 @@ def main():
         rollouts.append(rollout)
     for i in range(args.adv_num):
         rollouts[i].share_obs[0].copy_(torch.tensor(obs.reshape(args.num_processes, -1)))
-        rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:]))
+        rollouts[i].obs[0].copy_(torch.tensor(obs[:, i + args.good_num, :]))
         rollouts[i].to(device)
 
     for j in range(num_updates):
@@ -181,39 +153,34 @@ def main():
                     action_log_prob_list.append(action_log_prob)
                     recurrent_hidden_states_list.append(recurrent_hidden_states)
                 
-            # Obser reward and next obs
-            # action = []
-            # for i in range(args.num_processes):
-            #     one_env_action = []
-            #     for k in range(args.adv_num):
-            #         one_hot_action = np.zeros(envs.action_space[0].n)
-            #         one_hot_action[action_list[k][i]] = 1
-            #         one_env_action.append(one_hot_action)
-            #     action.append(one_env_action)
-            #start = time.time()
-            #pdb.set_trace()
 
             action = []
             for i in range(args.num_processes):
-                one_env_action = []
+                action_movement = []
+                action_pull = []
+                action_glueall = []
+                for k in range(args.good_num):
+                    action_movement.append(np.zeros(3, dtype = np.int32))
+                    action_pull.append(0)
+                    action_glueall.append(0)
                 for k in range(args.adv_num):
-                    action_movement = MultiDiscrete(action_list[k][i][:3])
-                    action_pull = Discrete(action_list[k][i][3])
-                    action_lock = Discrete(action_list[k][i][4])
-                    all_action = Tuple([action_movement, action_pull, action_lock])
-                    one_env_action.append(all_action)
+                    action_movement.append(action_list[k][i][:3].cpu().numpy())
+                    action_pull.append(np.int(action_list[k][i][3].cpu().numpy()))
+                    action_glueall.append(np.int(action_list[k][i][4].cpu().numpy()))
+                action_movement = np.stack(action_movement, axis = 0)
+                action_pull = np.stack(action_pull, axis = 0)
+                action_glueall = np.stack(action_glueall, axis = 0)
+                one_env_action = {'action_movement': action_movement, 'action_pull': action_pull, 'action_glueall': action_glueall}
                 action.append(one_env_action)
-            import pdb; pdb.set_trace()
+            
+            
+            obs, reward, done, infos = envs.step(action, args.num_processes)
 
-
-        
-            obs, reward, done, infos = envs.step(action)
             for info in infos:
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
             masks = torch.ones(args.num_processes, 1)
             bad_masks = torch.ones(args.num_processes, 1)
-            #import pdb; pdb.set_trace()
             if args.assign_id:
                 for i in range(args.adv_num):
                     vec_id = np.zeros((args.num_processes, args.adv_num))
@@ -223,37 +190,27 @@ def main():
                     a_obs = torch.tensor(obs[:,i,:])
                     rollouts[i].insert(torch.cat((as_obs, vec_id),1), torch.cat((a_obs, vec_id),1), 
                                 recurrent_hidden_states, action_list[i],
-                                action_log_prob_list[i], value_list[i], torch.tensor(reward[:, i].reshape(-1,1)), masks, bad_masks)
+                                action_log_prob_list[i], value_list[i], torch.tensor(reward[:, i + args.good_num].reshape(-1,1)), masks, bad_masks)
             else:
                 for i in range(args.adv_num):
-                    rollouts[i].insert(torch.tensor(obs.reshape(args.num_processes, -1)), torch.tensor(obs[:,i,:]), 
+                    rollouts[i].insert(torch.tensor(obs.reshape(args.num_processes, -1)), torch.tensor(obs[:, i + args.good_num, :]), 
                                 recurrent_hidden_states, action_list[i],
-                                action_log_prob_list[i], value_list[i], torch.tensor(reward[:, i].reshape(-1,1)), masks, bad_masks)
-                    
+                                action_log_prob_list[i], value_list[i], torch.tensor(reward[:, i + args.good_num].reshape(-1,1)), masks, bad_masks)
+        
+        writer.add_scalars('agent0/final_reward',{'reward': reward[:,2].mean()}, j)
+        print('final_reward', reward[:,2].mean())
+
         with torch.no_grad():
             next_value_list = []
             for i in range(args.adv_num):
-                next_value = actor_critic[i].get_value(
+                next_value = actor_critic_seeker[i].get_value(
                     rollouts[i].share_obs[-1],
                     rollouts[i].obs[-1], args.adv_num, rollouts[i].recurrent_hidden_states[-1],
                     rollouts[i].masks[-1]).detach()
                 next_value_list.append(next_value)
 
         if args.gail:
-            if j >= 10:
-                envs.venv.eval()
-
-            gail_epoch = args.gail_epoch
-            if j < 10:
-                gail_epoch = 100  # Warm up
-            for _ in range(gail_epoch):
-                discr.update(gail_train_loader, rollouts,
-                             utils.get_vec_normalize(envs)._obfilt)
-
-            for step in range(args.num_steps):
-                rollouts.rewards[step] = discr.predict_reward(
-                    rollouts.obs[step], rollouts.actions[step], args.gamma,
-                    rollouts.masks[step])
+            assert 0
         
         for i in range(args.adv_num):
             rollouts[i].compute_returns(next_value_list[i], args.use_gae, args.gamma,
@@ -279,7 +236,7 @@ def main():
         else:
             for i in range(args.adv_num):
                 rollouts[i].share_obs[0].copy_(torch.tensor(obs.reshape(args.num_processes, -1)))
-                rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:]))
+                rollouts[i].obs[0].copy_(torch.tensor(obs[:, i + args.good_num, :]))
                 rollouts[i].to(device)
 
    
@@ -290,7 +247,7 @@ def main():
                 os.makedirs(save_path + model_dir)
             for i in range(args.adv_num):
                 torch.save([
-                    actor_critic[i],
+                    actor_critic_seeker[i],
                     getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
                 ], save_path + model_dir + '/agent_%i' % (i+1) + ".pt")
 
