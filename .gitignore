@@ -4,3 +4,5 @@
 /logs/
 /logs_2/
 /agent_landmarks_figs/
+/.vscode/
+/__pycache__/
