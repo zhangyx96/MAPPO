@@ -115,6 +115,7 @@ class MaskActionWrapper(gym.Wrapper):
         return deepcopy(self.prev_obs)
 
     def step(self, action):
+        #import pdb; pdb.set_trace()
         mask = np.concatenate([self.prev_obs[k] for k in self.mask_keys], -1)
         action[self.action_key] = np.logical_and(action[self.action_key], mask)
         self.prev_obs, rew, done, info = self.env.step(action)
@@ -202,5 +203,9 @@ class ConcatenateObsWrapper(gym.ObservationWrapper):
 
     def observation(self, obs):
         for key_to_save, keys_to_concat in self.obs_groups.items():
+            for k in keys_to_concat:
+                if k not in obs.keys():
+                    print(obs.keys())
+                    assert 0
             obs[key_to_save] = np.concatenate([obs[k] for k in keys_to_concat], -1)
         return obs

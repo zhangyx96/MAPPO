@@ -205,10 +205,10 @@ class DummyVecEnv(VecEnv):
         self.ts = np.zeros(len(self.envs), dtype='int')        
         self.actions = None
 
-    def step_async(self, actions):
+    def step_async(self, actions, now_agent_num):
         self.actions = actions
 
-    def step_wait(self):
+    def step_wait(self,now_agent_num):
         results = [env.step(a) for (a,env) in zip(self.actions, self.envs)]
         obs, rews, dones, infos = map(np.array, zip(*results))
         self.ts += 1

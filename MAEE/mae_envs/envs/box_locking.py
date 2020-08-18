@@ -18,7 +18,8 @@ from mae_envs.modules.objects import Boxes, Ramps, LidarSites
 from mae_envs.modules.world import FloorAttributes, WorldConstants
 from mae_envs.modules.util import uniform_placement, center_placement
 from mae_envs.envs.base import Base
-from mae_envs.envs.hide_and_seek import quadrant_placement
+from mae_envs.envs.hide_and_seek import quadrant_placement,outside_quadrant_placement
+
 
 
 class LockObjectsTask(gym.Wrapper):
@@ -221,7 +222,7 @@ def rotate_tri_placement(grid, obj_size, metadata, random_state):
 
 
 def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
-             floor_size=6.0, grid_size=30, door_size=2,
+             floor_size=6.0, grid_size=30, door_size=3,
              n_agents=1, fixed_agent_spawn=False,
              lock_box=True, grab_box=True, grab_selective=False,
              lock_type='any_lock_specific',
@@ -232,7 +233,7 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
              scenario='quadrant', p_door_dropout=0.0,
              n_rooms=4, random_room_number=True,
              n_lidar_per_agent=0, visualize_lidar=False, compress_lidar_scale=None,
-             n_boxes=2, box_size=0.5, box_only_z_rot=False,
+             n_boxes=1, box_size=0.5, box_only_z_rot=False,
              boxid_obs=True, boxsize_obs=True, pad_ramp_size=True, additional_obs={},
              # lock-box task
              task_type='all', lock_reward=5.0, unlock_penalty=7.0, shaped_reward_scale=0.25,
@@ -242,12 +243,11 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
 
     grab_radius_multiplier = lock_grab_radius / box_size
     lock_radius_multiplier = lock_grab_radius / box_size
-
     env = Base(n_agents=n_agents, n_substeps=n_substeps,
                floor_size=floor_size,
                horizon=horizon, action_lims=action_lims, deterministic_mode=deterministic_mode,
                grid_size=grid_size)
-
+    
     if scenario == 'randomwalls':
         env.add_module(RandomWalls(grid_size=grid_size, num_rooms=n_rooms,
                                    random_room_number=random_room_number,
@@ -260,8 +260,9 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
         env.add_module(WallScenarios(grid_size=grid_size, door_size=door_size,
                                      scenario=scenario, friction=other_friction,
                                      p_door_dropout=p_door_dropout))
-        box_placement_fn = uniform_placement
-        ramp_placement_fn = uniform_placement
+        #box_placement_fn = uniform_placement
+        box_placement_fn = outside_quadrant_placement
+        ramp_placement_fn = outside_quadrant_placement
         agent_placement_fn = quadrant_placement if not fixed_agent_spawn else center_placement
     elif scenario == 'empty':
         env.add_module(WallScenarios(grid_size=grid_size, door_size=2, scenario='empty'))
@@ -276,7 +277,6 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
         box_placement_fn = uniform_placement if 'uniform' in scenario else rotate_tri_placement
     else:
         raise ValueError(f"Scenario {scenario} not supported.")
-
     env.add_module(Agents(n_agents,
                           placement_fn=agent_placement_fn,
                           color=[np.array((66., 235., 244., 255.)) / 255] * n_agents,
@@ -304,10 +304,11 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
         env.add_module(FloorAttributes(friction=box_floor_friction))
     env.add_module(WorldConstants(gravity=gravity))
     env.reset()
-    keys_self = ['agent_qpos_qvel', 'hider', 'prep_obs']
-    #keys_self = ['agent_qpos_qvel']
+    #keys_self = ['agent_qpos_qvel', 'hider', 'prep_obs']
+    keys_self = ['agent_qpos_qvel']
     keys_mask_self = ['mask_aa_obs']
-    keys_external = ['agent_qpos_qvel']
+    #keys_external = ['agent_qpos_qvel']
+    keys_external = []
     keys_copy = ['you_lock', 'team_lock']
     keys_mask_external = []
 
@@ -374,17 +375,17 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
                           return_threshold=return_threshold)
     ###
     #############################################
-
     env = SplitObservations(env, keys_self + keys_mask_self, keys_copy=keys_copy)
+    #import pdb; pdb.set_trace()
     env = SpoofEntityWrapper(env, n_boxes,
                              ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
                              ['mask_ab_obs'])
     keys_mask_external += ['mask_ab_obs_spoof']
     
-    if n_agents < 2:
-        env = SpoofEntityWrapper(env, 1, ['agent_qpos_qvel', 'hider', 'prep_obs'], ['mask_aa_obs'])
-        import pdb
-        pdb.set_trace()
+    # if n_agents < 2:
+    #     env = SpoofEntityWrapper(env, 1, ['agent_qpos_qvel'], ['mask_aa_obs'])
+
+
 
     env = LockAllWrapper(env, remove_object_specific_lock=True)
     if not grab_out_of_vision and grab_box:
@@ -394,13 +395,9 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
     if not grab_selective and grab_box:
         env = GrabClosestWrapper(env)
     env = DiscardMujocoExceptionEpisodes(env)
-    env = ConcatenateObsWrapper(env, {'agent_qpos_qvel': ['agent_qpos_qvel', 'hider', 'prep_obs'],
-                                      'box_obs': ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
-                                      'ramp_obs': ['ramp_obs', 'ramp_you_lock', 'ramp_team_lock',
-                                                   'ramp_obj_lock']})
+    env = ConcatenateObsWrapper(env, {'box_obs': ['box_obs', 'you_lock', 'team_lock', 'obj_lock']})
     env = SelectKeysWrapper(env, keys_self=keys_self,
                             keys_external=keys_external,
                             keys_mask=keys_mask_self + keys_mask_external,
-                            flatten=False)
-
+                            flatten=True)
     return env

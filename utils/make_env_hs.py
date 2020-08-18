@@ -1,6 +1,7 @@
 
 def make_env(env_name, benchmark=False, discrete_action=False):
     from MAEE.mae_envs.envs.hide_and_seek import make_env
+    #from MAEE.mae_envs.envs.box_locking import make_env
     from os.path import abspath, dirname, join
 
 

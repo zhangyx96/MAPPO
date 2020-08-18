@@ -116,7 +116,7 @@ class HideAndSeekRewardWrapper(gym.Wrapper):
                     Seekers recieve 1.0 if any seeker sees a hider.
             reward_scale (float): scales the reward by this factor
     '''
-    def __init__(self, env, n_hiders, n_seekers, rew_type='selfish', reward_scale=1.0):
+    def __init__(self, env, n_hiders, n_seekers, rew_type='selfish', reward_scale=1):
         super().__init__(env)
         self.n_agents = self.unwrapped.n_agents
         self.rew_type = rew_type
@@ -133,8 +133,7 @@ class HideAndSeekRewardWrapper(gym.Wrapper):
                                      [f'seeker{i}' for i in range(self.n_seekers)]
 
     def step(self, action):
-        obs, rew, done, info = self.env.step(action)
-
+        obs, rew, done, info = self.env.step(action)   #实现之前rew全为0
         this_rew = np.ones((self.n_agents,))
         this_rew[:self.n_hiders][np.any(obs['mask_aa_obs'][self.n_hiders:, :self.n_hiders], 0)] = -1.0
         this_rew[self.n_hiders:][~np.any(obs['mask_aa_obs'][self.n_hiders:, :self.n_hiders], 1)] = -1.0
@@ -217,9 +216,9 @@ def outside_quadrant_placement(grid, obj_size, metadata, random_state):
 
 
 def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
-             floor_size=6.0, grid_size=30, door_size=2,
-             n_hiders=2, n_seekers=2, max_n_agents=None,
-             n_boxes=2, n_ramps=1, n_elongated_boxes=0,
+             floor_size=6.0, grid_size=30, door_size=0,
+             n_hiders=1, n_seekers=1, max_n_agents=None,
+             n_boxes=0, n_ramps=0, n_elongated_boxes=0,
              rand_num_elongated_boxes=False, n_min_boxes=None,
              box_size=0.5, boxid_obs=False, box_only_z_rot=True,
              rew_type='joint_zero_sum',
@@ -237,7 +236,7 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
              prep_fraction=0, prep_obs=False,
              team_size_obs=False,
              restrict_rect=None, penalize_objects_out=False,
-             n_food=0, food_radius=None, food_respawn_time=None, max_food_health=1,
+             n_food=1, food_radius=None, food_respawn_time=None, max_food_health=1,
              food_together_radius=None, food_rew_type='selfish', eat_when_caught=False,
              food_reward_scale=1.0, food_normal_centered=False, food_box_centered=False,
              n_food_cluster=1):
@@ -293,10 +292,13 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
         env.add_module(WallScenarios(grid_size=grid_size, door_size=door_size,
                                      scenario=scenario, friction=other_friction,
                                      p_door_dropout=p_door_dropout))
-        box_placement_fn = quadrant_placement
-        ramp_placement_fn = uniform_placement
+        # box_placement_fn = quadrant_placement
+        # ramp_placement_fn = uniform_placement
+        box_placement_fn = outside_quadrant_placement
+        ramp_placement_fn = outside_quadrant_placement
         hider_placement = uniform_placement if quadrant_game_hider_uniform_placement else quadrant_placement
-        agent_placement_fn = [hider_placement] * n_hiders + [outside_quadrant_placement] * n_seekers
+        # agent_placement_fn = [hider_placement] * n_hiders + [outside_quadrant_placement] * n_seekers
+        agent_placement_fn = [hider_placement] * n_hiders + [hider_placement] * n_seekers
     else:
         raise ValueError(f"Scenario {scenario} not supported.")
     env.add_module(Agents(n_hiders + n_seekers,
@@ -304,6 +306,7 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
                           color=[np.array((66., 235., 244., 255.)) / 255] * n_hiders + [(1., 0., 0., 1.)] * n_seekers,
                           friction=other_friction,
                           polar_obs=polar_obs))
+    
     if np.max(n_boxes) > 0:
         env.add_module(Boxes(n_boxes=n_boxes, placement_fn=box_placement_fn,
                              friction=box_floor_friction, polar_obs=polar_obs,
@@ -413,23 +416,25 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
     if prep_obs:
         env = TrackStatWrapper(env, np.max(n_boxes), n_ramps, n_food)
     env = SplitObservations(env, keys_self + keys_mask_self, keys_copy=keys_copy)
-    env = SpoofEntityWrapper(env, np.max(n_boxes), ['box_obs', 'you_lock', 'team_lock', 'obj_lock'], ['mask_ab_obs'])
+    if n_boxes:
+        env = SpoofEntityWrapper(env, np.max(n_boxes), ['box_obs', 'you_lock', 'team_lock', 'obj_lock'], ['mask_ab_obs'])
     if n_food:
         env = SpoofEntityWrapper(env, n_food, ['food_obs'], ['mask_af_obs'])
     keys_mask_external += ['mask_ab_obs_spoof', 'mask_af_obs_spoof']
     if max_n_agents is not None:
         env = SpoofEntityWrapper(env, max_n_agents, ['agent_qpos_qvel', 'hider', 'prep_obs'], ['mask_aa_obs'])
     env = LockAllWrapper(env, remove_object_specific_lock=True)
-    if not grab_out_of_vision and grab_box:
+    if not grab_out_of_vision and grab_box and n_boxes >0:
         env = MaskActionWrapper(env, 'action_pull',
                                 ['mask_ab_obs'] + (['mask_ar_obs'] if n_ramps > 0 else []))
-    if not grab_selective and grab_box:
+    if not grab_selective and grab_box and n_boxes >0:
         env = GrabClosestWrapper(env)
     env = NoActionsInPrepPhase(env, np.arange(n_hiders, n_hiders + n_seekers))
     env = DiscardMujocoExceptionEpisodes(env)
-    env = ConcatenateObsWrapper(env, {'agent_qpos_qvel': ['agent_qpos_qvel', 'hider', 'prep_obs'],
-                                      'box_obs': ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
-                                      'ramp_obs': ['ramp_obs'] + (['ramp_you_lock', 'ramp_team_lock', 'ramp_obj_lock'] if lock_ramp else [])})
+    # env = ConcatenateObsWrapper(env, {'agent_qpos_qvel': ['agent_qpos_qvel', 'hider', 'prep_obs'],
+    #                                   'box_obs': ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
+    #                                   'ramp_obs': ['ramp_obs'] + (['ramp_you_lock', 'ramp_team_lock', 'ramp_obj_lock'] if lock_ramp else [])})
+    env = ConcatenateObsWrapper(env, {'agent_qpos_qvel': ['agent_qpos_qvel', 'hider', 'prep_obs']})
     # env = SelectKeysWrapper(env, keys_self=keys_self,
     #                         keys_external=keys_external,
     #                         keys_mask=keys_mask_self + keys_mask_external,

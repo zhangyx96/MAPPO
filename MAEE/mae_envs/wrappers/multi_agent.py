@@ -93,7 +93,6 @@ class SplitObservations(gym.ObservationWrapper):
                 new_obs[k] = obs[k]
             else:
                 new_obs[k] = np.tile(v, self.n_agents).reshape([v.shape[0], self.n_agents, v.shape[1]]).transpose((1, 0, 2))
-
         return new_obs
 
     def _process_masks(self, mask_obs, self_mask=False):
@@ -157,8 +156,6 @@ class SelectKeysWrapper(gym.ObservationWrapper):
             extern_obs = [observation[k].reshape((observation[k].shape[0], -1))
                           for k in self.keys_external]
             obs = np.concatenate([observation[k] for k in self.keys_self] + extern_obs, axis=-1)
-            #import pdb; pdb.set_trace()
-            # return {'observation_self': obs}
             return obs
 
         else:

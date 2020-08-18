@@ -77,7 +77,6 @@ class Agents(EnvModule):
     def observation_step(self, env, sim):
         qpos = sim.data.qpos.copy()
         qvel = sim.data.qvel.copy()
-
         agent_qpos = qpos[self.agent_qpos_idxs]
         agent_qvel = qvel[self.agent_qvel_idxs]
         agent_angle = agent_qpos[:, [-1]] - np.pi / 2  # Rotate the angle to match visual front
@@ -90,7 +89,6 @@ class Agents(EnvModule):
             'agent_qpos_qvel': agent_qpos_qvel,
             'agent_angle': agent_angle,
             'agent_pos': agent_qpos[:, :3]}
-
         return obs
 
 

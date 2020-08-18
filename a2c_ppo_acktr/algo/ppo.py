@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from tensorboardX import SummaryWriter
+from datetime import datetime
 
 
 class PPO():
@@ -36,12 +37,11 @@ class PPO():
         self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
 
         self.training_step = 0
-        self.writer = SummaryWriter("/home/zhangyx/MAPPO/logs"+model_dir)
+        self.writer = SummaryWriter("/home/zhangyx/MAPPO/logs"+model_dir+ '_' + datetime.now().strftime("%Y%m%d-%H%M%S"))
         
 
     def update(self, rollouts, now_agent_num):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
-        #print(rollouts.rewards.mean())
         advantages = (advantages - advantages.mean()) / (
             advantages.std() + 1e-5)
         value_loss_epoch = 0
@@ -113,7 +113,5 @@ class PPO():
         value_loss_epoch /= num_updates
         action_loss_epoch /= num_updates
         dist_entropy_epoch /= num_updates
-        #print(self.training_step)
-        #import pdb; pdb.set_trace()
 
         return value_loss_epoch, action_loss_epoch, dist_entropy_epoch

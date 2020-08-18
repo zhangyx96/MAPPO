@@ -35,8 +35,11 @@ class Policy(nn.Module):
         # self.base = base(obs_shape[0], agent_num, agent_i, **base_kwargs)
         self.agent_i = agent_i
         self.dists = dists
-        self.dists = nn.ModuleList(self.dists)
+
         
+
+        
+
     @property
     def is_recurrent(self):
         return self.base.is_recurrent
@@ -50,27 +53,34 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, share_inputs, inputs, agent_num, rnn_hxs, masks, deterministic=False):
-        # value, actor_features, rnn_hxs = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks)
         value, actor_features, rnn_hxs = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks)
         
-        dists = [dist(actor_features) for dist in self.dists]
-        actions = [] 
-        for dist in dists:
-            if deterministic:
-                actions.append(dist.mode())
-            else:
-                actions.append(dist.sample())
+        dists = self.dists(actor_features)
+        if deterministic:
+            actions = dists.mode()
+        else:
+            actions = []
+            for fc in dists:    # fc refers FixedCategorical class
+                actions.append(fc.sample())
 
         action_log_probs = []
+        action_count = 0
+        for fc in dists:
+            action_log_probs.append(fc.log_probs(actions[action_count]))
+            action_count += 1
 
-        for action, dist in zip(actions, dists):
-            action_log_probs.append(dist.log_probs(action))
-
-        action_out = torch.cat(actions,-1)    
-        action_log_probs_out = torch.sum(torch.cat(action_log_probs, -1), -1, keepdim = True)
-
-        return value, action_out, action_log_probs_out, rnn_hxs
+        action_log_probs = torch.stack(action_log_probs, dim = 2).squeeze(1)
+        actions = torch.stack(actions, dim = 2).squeeze(1)
+        
+        #action_log_probs = [dist.log_probs(action) for dist, action in zip(dists, actions)]
+        # dist_entropy = [dist.entropy().mean() for dist in dists]
+        return value, actions, action_log_probs, rnn_hxs
     
+    # def update_num(self,adv_num, good_num, landmark_num):
+    #     self.adv_num = adv_num
+    #     self.good_num = good_num
+    #     self.landmark_num = landmark_num
+
 
     def get_value(self, share_inputs, inputs, agent_num, rnn_hxs, masks):
         value, _, _ = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks)
@@ -79,18 +89,25 @@ class Policy(nn.Module):
     def evaluate_actions(self, share_inputs, inputs, agent_num, rnn_hxs, masks, action):
         value, actor_features, rnn_hxs = self.base(share_inputs, inputs, self.agent_i, rnn_hxs, masks)
 
-        dists = [dist(actor_features) for dist in self.dists]
+        dist = self.dists(actor_features)
+        actions = []
         dist_entropy = []
+        for fc in dist:    # fc refers FixedCategorical class
+            actions.append(fc.sample())
+            dist_entropy.append(fc.entropy().mean())
+
+        dist_entropy = torch.stack(dist_entropy).mean()
+                    
+
         action_log_probs = []
-        
-        for i, dist in enumerate(dists):
-            action_log_probs.append(dist.log_probs(action[:,i]))
-            dist_entropy.append(dist.entropy().mean())
+        action_count = 0
+        for fc in dist:
+            action_log_probs.append(fc.log_probs(actions[action_count]))
+            action_count += 1
 
-        action_log_probs_out = torch.sum(torch.cat(action_log_probs, -1), -1, keepdim = True)
-        dist_entropy_out = dist_entropy[0] / 2 + dist_entropy[0] / 2 + dist_entropy[0] / 2 + dist_entropy[0] / 0.98 + dist_entropy[0] / 0.98  
-
-        return value, action_log_probs_out, dist_entropy_out, rnn_hxs
+        action_log_probs = torch.stack(action_log_probs, dim = 2).squeeze(1)
+        #import pdb; pdb.set_trace()
+        return value, action_log_probs, dist_entropy, rnn_hxs
 
     
 
